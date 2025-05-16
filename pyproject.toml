@@ -1,0 +1,13 @@
+[project]
+name = "nnsight-docs"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "furo>=2024.8.6",
+    "myst-parser>=4.0.1",
+    "nbsphinx>=0.9.6",
+    "sphinx>=8.2.3",
+    "sphinx-autobuild>=2024.10.3",
+]

@@ -1,0 +1,851 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="nnsight.intervention" href="intervention.html" /><link rel="prev" title="nnsight.modeling" href="modeling.html" />
+
+    <!-- Generated with Sphinx 8.2.3 and Furo 2024.08.06 -->
+        <title>nnsight.tracing - NNsight</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=354aac6f" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=302659d7" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">NNsight</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  
+  <span class="sidebar-brand-text">NNsight</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Learn</span></p>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../features.html">Features</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of Features</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="simple">
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../documentation.html">Documentation</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of Documentation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="modeling.html">nnsight.modeling</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">nnsight.tracing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="intervention.html">nnsight.intervention</a></li>
+<li class="toctree-l2"><a class="reference internal" href="schema.html">nnsight.schema</a></li>
+<li class="toctree-l2"><a class="reference internal" href="util.html">nnsight.util</a></li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/documentation/tracing.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="module-nnsight.tracing">
+<span id="nnsight-tracing"></span><h1>nnsight.tracing<a class="headerlink" href="#module-nnsight.tracing" title="Link to this heading">¶</a></h1>
+<p>The <cite>tracing</cite> module acts as a standalone library to trace and execute Python based deferred computation graphs.</p>
+<p>The <cite>graph</cite> sub-module defines the computation graph primitives.
+The <cite>protocol</cite> sub-module contains logic for adding custom operations to the computation graph.
+The <cite>contexts</cite> sub-module contains logic for defining scoped sub-graphs that handle execution of their piece of the computation graph.
+The <cite>backends</cite> sub-module contains logic for executing the traced computation graph.</p>
+<dl class="py class" id="module-nnsight.tracing.graph.graph">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.graph.Graph">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nnsight.tracing.graph.graph.</span></span><span class="sig-name descname"><span class="pre">Graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node_class:</span> <span class="pre">~typing.Type[~nnsight.tracing.graph.node.NodeType]</span> <span class="pre">=</span> <span class="pre">&lt;class</span> <span class="pre">'nnsight.tracing.graph.node.Node'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy_class:</span> <span class="pre">~typing.Type[~nnsight.tracing.graph.proxy.ProxyType]</span> <span class="pre">=</span> <span class="pre">&lt;class</span> <span class="pre">'nnsight.tracing.graph.proxy.Proxy'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nnsight.tracing.graph.graph.Graph" title="Link to this definition">¶</a></dt>
+<dd><p>The <cite>Graph</cite> class represents a computation graph composed of individual <cite>Node`s (operations).
+It contains logic to both trace/build the computation graph, as well as how to execute it.
+Sections of the graph can be divided into `SubGraphs</cite>, but there will always be one root <cite>Graph</cite>.
+The final <cite>Node</cite> of the graph (graph[-1]) should be the root <cite>Node</cite> which when executed, downstream executes the entire <cite>Graph</cite>.</p>
+<dl>
+<dt>Attributes:</dt><dd><p>node_class (Type[NodeType]): Class used to create <cite>Node`s. Can be changed to add additional functionality to `Node’s. Defaults to `Node</cite>.
+proxy_class (Type[ProxyType]): Class used to create <cite>Proxy`s for ‘Node’s. Can be changed to add additional functionality to `Proxy’s. Defaults to `Proxy</cite>.
+nodes (List[Node]): Ordered list of all <cite>Node`s. Used to access `Nodes</cite> via their index.
+stack (List[Graph]): List of <cite>Graph`s as a stack. Used to move `Node`s onto the most recent graph, as opposed to the `Graph</cite> used to create the <cite>Node</cite>.</p>
+<blockquote>
+<div><p>Managed outside the <cite>Graph</cite> class by the <cite>Context</cite> objects.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>defer_stack (List[int]): List of <cite>Node</cite> indexes as a stack. Used to prevent destruction/memory cleanup of <a href="#id1"><span class="problematic" id="id2">`</span></a>Node`s whose index is less than the most recent index on the stack.</dt><dd><p>This happens when you have <cite>Node`s that will be executed more than once. In a loop for example, you only want to destroy a `Node`s dependencies on the final iteration.
+Also managed outside the `Graph</cite> object.</p>
+</dd>
+</dl>
+<p>alive (bool): If the <cite>Graph</cite> is “alive”. Alive meaning its still open for tracing (adding new <cite>Node`s). Set to False before executing the `Graph</cite>.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.graph.Graph.add">
+<span class="sig-name descname"><span class="pre">add</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">NodeType</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#nnsight.tracing.graph.graph.Graph.add" title="Link to this definition">¶</a></dt>
+<dd><p>Adds a <cite>Node</cite> to this <cite>Graph</cite>.
+Sets the <cite>Node</cite>’s .index attribute so it knows its own index within the entire computation graph.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>node (NodeType): <cite>Node</cite> to add.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.graph.Graph.clean">
+<span class="sig-name descname"><span class="pre">clean</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nnsight.tracing.graph.graph.Graph.clean" title="Link to this definition">¶</a></dt>
+<dd><p>Cleans up dependencies of <cite>Node`s so their values are appropriately memory managed.
+Cleans all `Node`s from start to end regardless if they are on this `Graph</cite>.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>start (Optional[int], optional): <cite>Node</cite> index to start cleaning up from. Defaults to None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.graph.Graph.copy">
+<span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_graph</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#nnsight.tracing.graph.graph.Graph" title="nnsight.tracing.graph.graph.Graph"><span class="pre">Graph</span></a><span class="p"><span class="pre">[</span></span><span class="pre">NodeType</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ProxyType</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nnsight.tracing.graph.graph.Graph" title="nnsight.tracing.graph.graph.Graph"><span class="pre">Graph</span></a></span></span><a class="headerlink" href="#nnsight.tracing.graph.graph.Graph.copy" title="Link to this definition">¶</a></dt>
+<dd><p>Creates a shallow copy of the root <cite>Graph</cite> object.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>new_graph (Optional[Graph[NodeType, ProxyType]], optional): <cite>Graph</cite> to copy into. Defaults to None and creates a new <cite>Graph</cite>.</p>
+</dd>
+<dt>Returns:</dt><dd><p>Graph: New <cite>Graph</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.graph.Graph.create">
+<span class="sig-name descname"><span class="pre">create</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Protocol</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">redirect</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ProxyType</span></span></span><a class="headerlink" href="#nnsight.tracing.graph.graph.Graph.create" title="Link to this definition">¶</a></dt>
+<dd><p>Creates a new <cite>Node</cite> using this <cite>Graph</cite>’s node_class and returns a <cite>Proxy</cite> for it with this <cite>Graph</cite>’s proxy_class.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>target (Union[Callable, protocols.Protocol]): Target for the new <cite>Node</cite>.
+redirect (bool, optional): If to move the newly created <cite>Node</cite> to the most recent <cite>Graph</cite> on the Graph.stack. Defaults to True.</p>
+</dd>
+<dt>Returns:</dt><dd><p>ProxyType: <cite>Proxy</cite> for newly created <cite>Node</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.graph.Graph.execute">
+<span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#nnsight.tracing.graph.graph.Graph.execute" title="Link to this definition">¶</a></dt>
+<dd><p>Executes all <cite>Node`s (operations) in this `Graph</cite>.</p>
+<dl class="simple">
+<dt>Raises:</dt><dd><p>exception: If there is an exception during executing a <cite>Node</cite>. If so, we need to clean up the dependencies of <a href="#id3"><span class="problematic" id="id4">`</span></a>Node`s yet to be executed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.graph.Graph.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#nnsight.tracing.graph.graph.Graph.reset" title="Link to this definition">¶</a></dt>
+<dd><p>Resets the <cite>Graph</cite> to prepare for execution.
+Simply resets all <cite>Node`s in the `Graph</cite>.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.graph.SubGraph">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nnsight.tracing.graph.graph.</span></span><span class="sig-name descname"><span class="pre">SubGraph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">GraphType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nnsight.tracing.graph.graph.SubGraph" title="Link to this definition">¶</a></dt>
+<dd><p>Represents a slice of the greater computation graph. It has a reference to the same underlying list of nodes and simply maintains a subset of node indexes.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>subset (List[int]): Node indexes for <a href="#id5"><span class="problematic" id="id6">`</span></a>Node`s contained within this subgraph.</p>
+</dd>
+</dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.graph.SubGraph.Iterator">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Iterator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subgraph</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#nnsight.tracing.graph.graph.SubGraph" title="nnsight.tracing.graph.graph.SubGraph"><span class="pre">SubGraph</span></a><span class="p"><span class="pre">[</span></span><span class="pre">GraphType</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nnsight.tracing.graph.graph.SubGraph.Iterator" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.graph.SubGraph.add">
+<span class="sig-name descname"><span class="pre">add</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">NodeType</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#nnsight.tracing.graph.graph.SubGraph.add" title="Link to this definition">¶</a></dt>
+<dd><p>Adds a <cite>Node</cite> to this <cite>Graph</cite>.
+Sets the <cite>Node</cite>’s .index attribute so it knows its own index within the entire computation graph.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>node (NodeType): <cite>Node</cite> to add.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.graph.SubGraph.copy">
+<span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_graph</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#nnsight.tracing.graph.graph.SubGraph" title="nnsight.tracing.graph.graph.SubGraph"><span class="pre">SubGraph</span></a><span class="p"><span class="pre">[</span></span><span class="pre">NodeType</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ProxyType</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#nnsight.tracing.graph.graph.Graph" title="nnsight.tracing.graph.graph.Graph"><span class="pre">Graph</span></a><span class="p"><span class="pre">[</span></span><span class="pre">NodeType</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ProxyType</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">memo</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">NodeType</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#nnsight.tracing.graph.graph.SubGraph.copy" title="Link to this definition">¶</a></dt>
+<dd><p>Creates a shallow copy of this SubGraph.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>new_graph (Optional[SubGraph[NodeType, ProxyType]], optional): SubGraph to copy into. Defaults to None and creates a new SubGraph of the same type.
+parent (Optional[Graph[NodeType, ProxyType]], optional): Parent graph. Defaults to None and will create a root <cite>Graph</cite> as the parent.</p>
+</dd>
+<dt>Returns:</dt><dd><p>Self: New graph.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class" id="module-nnsight.tracing.graph.node">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.node.Node">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nnsight.tracing.graph.node.</span></span><span class="sig-name descname"><span class="pre">Node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Protocol</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">graph</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#nnsight.tracing.graph.graph.Graph" title="nnsight.tracing.graph.graph.Graph"><span class="pre">Graph</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nnsight.tracing.graph.node.Node" title="Link to this definition">¶</a></dt>
+<dd><p>A computation <cite>Graph</cite> is made up of individual <cite>Node`s which represent a single operation.
+It has a `target</cite> which the operation this <cite>Node</cite> will execute.
+It has <cite>args</cite> and <cite>kwargs</cite> to execute its <cite>target</cite> with. These may contain other <cite>Node`s and are therefore `dependencies</cite> of this <cite>Node</cite>.
+Conversely this <cite>Node</cite> is a <cite>listener</cite> of its <cite>dependencies</cite>.</p>
+<p>During execution of the computation graph and therefore the <a href="#id7"><span class="problematic" id="id8">`</span></a>Node`s, each</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>index (Optional[int]): Integer index of this <cite>Node</cite> within its greater computation graph.
+graph (Graph): 
+target (Union[Callable, Protocol]): Callable to execute as this <cite>Node</cite>’s operation. Might be a <cite>Protocol</cite> which is handled differently in node execution.</p>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.node.Node.attached">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">attached</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#nnsight.tracing.graph.node.Node.attached" title="Link to this definition">¶</a></dt>
+<dd><p>Checks to see if the <cite>Graph</cite> this <cite>Node</cite> is a part of is alive..
+Alive meaning the Graph is still open to tracing new Nodes.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>bool: Is Node attached.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.node.Node.create">
+<span class="sig-name descname"><span class="pre">create</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">NodeType</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Any</span></span></span><a class="headerlink" href="#nnsight.tracing.graph.node.Node.create" title="Link to this definition">¶</a></dt>
+<dd><p>We use Node.create vs Graph.create in case graph is dead.
+If the graph is dead, we first check the GlobalTracing Context to add
+assume this node is ready to execute and therefore we try and execute it and then return its value.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>Union[NodeType, Any]: Proxy or value</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.node.Node.dependencies">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dependencies</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Self</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#nnsight.tracing.graph.node.Node.dependencies" title="Link to this definition">¶</a></dt>
+<dd><p>Iterator from index to <cite>Node</cite>.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>List[Self]: List of dependency <a href="#id9"><span class="problematic" id="id10">`</span></a>Node`s.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.node.Node.destroy">
+<span class="sig-name descname"><span class="pre">destroy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#nnsight.tracing.graph.node.Node.destroy" title="Link to this definition">¶</a></dt>
+<dd><p>Removes the reference to the node’s value and logs it’s destruction.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.node.Node.done">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">done</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#nnsight.tracing.graph.node.Node.done" title="Link to this definition">¶</a></dt>
+<dd><p>Returns true if the value of this node has been set.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>bool: If done.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.node.Node.execute">
+<span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#nnsight.tracing.graph.node.Node.execute" title="Link to this definition">¶</a></dt>
+<dd><p>Actually executes this node.
+Lets protocol execute if target is Protocol.
+Else prepares args and kwargs and passes them to target. Gets output of target and sets the Node’s value to it.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.node.Node.fulfilled">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fulfilled</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#nnsight.tracing.graph.node.Node.fulfilled" title="Link to this definition">¶</a></dt>
+<dd><p>Returns true if remaining_dependencies is 0.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>bool: If fulfilled.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.node.Node.listeners">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">listeners</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Self</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#nnsight.tracing.graph.node.Node.listeners" title="Link to this definition">¶</a></dt>
+<dd><p>Iterator from index to <cite>Node</cite>.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>List[Self]: List of listener <a href="#id11"><span class="problematic" id="id12">`</span></a>Node`s.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.node.Node.prepare_inputs">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">prepare_inputs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inputs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#nnsight.tracing.graph.node.Node.prepare_inputs" title="Link to this definition">¶</a></dt>
+<dd><p>Prepare arguments for executing this node’s target.
+Converts Nodes in args and kwargs to their value.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>Any: Prepared inputs.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.node.Node.preprocess">
+<span class="sig-name descname"><span class="pre">preprocess</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#nnsight.tracing.graph.node.Node.preprocess" title="Link to this definition">¶</a></dt>
+<dd><p>Preprocess Node.args and Node.kwargs.
+Converts Proxies to their Node.
+Converts Nodes that are done to their value.
+Adds Node arguments to self dependencies.
+Add self to Node argument listeners.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.node.Node.redundant">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">redundant</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#nnsight.tracing.graph.node.Node.redundant" title="Link to this definition">¶</a></dt>
+<dd><p>Returns true if remaining_listeners is 0.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>bool: If redundant.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.node.Node.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#nnsight.tracing.graph.node.Node.reset" title="Link to this definition">¶</a></dt>
+<dd><p>Resets this Nodes remaining_listeners and remaining_dependencies.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.node.Node.set_value">
+<span class="sig-name descname"><span class="pre">set_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#nnsight.tracing.graph.node.Node.set_value" title="Link to this definition">¶</a></dt>
+<dd><p>Sets the value of this Node and logs the event.
+Updates remaining_dependencies of listeners. If they are now fulfilled, execute them.
+Updates remaining_listeners of dependencies. If they are now redundant, destroy them.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>value (Any): Value.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.node.Node.subgraph">
+<span class="sig-name descname"><span class="pre">subgraph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subgraph</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Set</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Set</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nnsight.tracing.graph.node.Node.subgraph" title="Link to this definition">¶</a></dt>
+<dd><p>Returns a Set of indexes starting from this node, and recursively iterating over all the Node’s listeners.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>subgraph (Optional[Set[int]], optional): Current subgraph. Defaults to None.</p>
+</dd>
+<dt>Returns:</dt><dd><p>Set[int]: Set of Node indexes.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.node.Node.update_dependencies">
+<span class="sig-name descname"><span class="pre">update_dependencies</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#nnsight.tracing.graph.node.Node.update_dependencies" title="Link to this definition">¶</a></dt>
+<dd><p>Updates remaining_listeners of dependencies. If they are now redundant, destroy them.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.node.Node.update_listeners">
+<span class="sig-name descname"><span class="pre">update_listeners</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#nnsight.tracing.graph.node.Node.update_listeners" title="Link to this definition">¶</a></dt>
+<dd><p>Updates remaining_dependencies of listeners.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.node.Node.value">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">value</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></em><a class="headerlink" href="#nnsight.tracing.graph.node.Node.value" title="Link to this definition">¶</a></dt>
+<dd><p>Property to return the value of this node.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>Any: The stored value of the node, populated during execution.</p>
+</dd>
+<dt>Raises:</dt><dd><p>ValueError: If the underlying ._value is inspect._empty (therefore never set or was destroyed).</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class" id="module-nnsight.tracing.graph.proxy">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.proxy.Proxy">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nnsight.tracing.graph.proxy.</span></span><span class="sig-name descname"><span class="pre">Proxy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#nnsight.tracing.graph.node.Node" title="nnsight.tracing.graph.node.Node"><span class="pre">Node</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nnsight.tracing.graph.proxy.Proxy" title="Link to this definition">¶</a></dt>
+<dd><p>Proxy objects are the actual objects that interact with operations in order to update the graph to create new Nodes.</p>
+<p>The operations that are traceable on base Proxy objects are many python built-in and magic methods.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>node (NodeType): This proxy’s Node.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.proxy.Proxy.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#nnsight.tracing.graph.proxy.Proxy.save" title="Link to this definition">¶</a></dt>
+<dd><p>Adds a lock Node to prevent its value from being cleared where normally it would be cleared when its no longer needed to save memory.
+Used to access values outside of the tracing context, after execution.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>InterventionProxy: Proxy.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="nnsight.tracing.graph.proxy.Proxy.value">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">value</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></em><a class="headerlink" href="#nnsight.tracing.graph.proxy.Proxy.value" title="Link to this definition">¶</a></dt>
+<dd><p>Property to return the value of this proxy’s node.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>Any: The stored value of the proxy, populated during execution of the model.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class" id="module-nnsight.tracing.contexts.base">
+<span id="module-nnsight.tracing.protocols.variable"></span><span id="module-nnsight.tracing.protocols.stop"></span><span id="module-nnsight.tracing.protocols.lock"></span><span id="module-nnsight.tracing.protocols.base"></span><dt class="sig sig-object py" id="nnsight.tracing.contexts.base.Context">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nnsight.tracing.contexts.base.</span></span><span class="sig-name descname"><span class="pre">Context</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">backend:</span> <span class="pre">~nnsight.tracing.backends.base.Backend</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent:</span> <span class="pre">~nnsight.tracing.graph.graph.GraphType</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">graph:</span> <span class="pre">~nnsight.tracing.graph.graph.GraphType</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">graph_class:</span> <span class="pre">~typing.Type[~nnsight.tracing.graph.graph.SubGraph]</span> <span class="pre">=</span> <span class="pre">&lt;class</span> <span class="pre">'nnsight.tracing.graph.graph.SubGraph'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_class:</span> <span class="pre">~typing.Type[~nnsight.tracing.graph.node.NodeType]</span> <span class="pre">=</span> <span class="pre">&lt;class</span> <span class="pre">'nnsight.tracing.graph.node.Node'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy_class:</span> <span class="pre">~typing.Type[~nnsight.tracing.graph.proxy.ProxyType]</span> <span class="pre">=</span> <span class="pre">&lt;class</span> <span class="pre">'nnsight.tracing.graph.proxy.Proxy'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nnsight.tracing.contexts.base.Context" title="Link to this definition">¶</a></dt>
+<dd><p>A <cite>Context</cite> represents a scope (or slice) of a computation graph with specific logic for adding and executing nodes defined within it.
+It has a <cite>SubGraph</cite> which contains the nodes that make up the operations of the context.
+As an <cite>AbstractContextManager</cite>, entering adds its sub-graph to the stack, making new nodes created while within this context added to it’s sub-graph.</p>
+<blockquote>
+<div><p>Exiting pops its sub-graph off the stack, allowing nodes to be added to its parent, and adds itself as a node to its parent <cite>Context</cite>/<cite>SubGraph</cite>. ( To say, “execute me”)
+If the <cite>Context</cite> has a backend, it pops its parent off the stack and passes it to the <cite>Backend</cite> object to execute.
+(This only happens if the context is the root-most context, and its parent is therefore the root <cite>Graph</cite>)</p>
+</div></blockquote>
+<p>As a <cite>Context</cite> is itself a <cite>Protocol</cite>, it defines how to execute it’s sub-graph in the <cite>execute</cite> method.</p>
+<p>Attributes:</p>
+<blockquote>
+<div><p>backend (Backend): Backend to execute the deferred root computation graph</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py class" id="module-nnsight.tracing.contexts.conditional">
+<dt class="sig sig-object py" id="nnsight.tracing.contexts.conditional.Condition">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nnsight.tracing.contexts.conditional.</span></span><span class="sig-name descname"><span class="pre">Condition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">condition</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">NodeType</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">branch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">NodeType</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nnsight.tracing.contexts.conditional.Condition" title="Link to this definition">¶</a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.contexts.conditional.Condition.style">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">style</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nnsight.tracing.contexts.conditional.Condition.style" title="Link to this definition">¶</a></dt>
+<dd><p>Visualization style for this protocol node.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><ul class="simple">
+<li><p>Dict: dictionary style.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class" id="module-nnsight.tracing.contexts.globals">
+<dt class="sig sig-object py" id="nnsight.tracing.contexts.globals.GlobalTracingContext">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nnsight.tracing.contexts.globals.</span></span><span class="sig-name descname"><span class="pre">GlobalTracingContext</span></span><a class="headerlink" href="#nnsight.tracing.contexts.globals.GlobalTracingContext" title="Link to this definition">¶</a></dt>
+<dd><p>The Global Tracing Context handles adding tracing operations globally without reference to a given <cite>GraphBasedContext</cite>.
+There should only be one of these and that is <cite>GlobalTracingContext.GLOBAL_TRACING_CONTEXT</cite>.
+<cite>GlobalTracingContext.TORCH_HANDLER</cite> handles adding torch functions without reference to a given <cite>GraphBasedContext</cite>.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="nnsight.tracing.contexts.globals.GlobalTracingContext.GlobalTracingExit">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">GlobalTracingExit</span></span><a class="headerlink" href="#nnsight.tracing.contexts.globals.GlobalTracingContext.GlobalTracingExit" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.contexts.globals.GlobalTracingContext.deregister">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">deregister</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#nnsight.tracing.contexts.globals.GlobalTracingContext.deregister" title="Link to this definition">¶</a></dt>
+<dd><p>Deregister <cite>GraphBasedContext</cite> globally.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>graph_based_context (GraphBasedContext): GraphBasedContext to deregister.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.contexts.globals.GlobalTracingContext.register">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">register</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph_based_context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#nnsight.tracing.contexts.tracer.Tracer" title="nnsight.tracing.contexts.tracer.Tracer"><span class="pre">Tracer</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#nnsight.tracing.contexts.globals.GlobalTracingContext.register" title="Link to this definition">¶</a></dt>
+<dd><p>Register <cite>GraphBasedContext</cite> globally.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>graph_based_context (GraphBasedContext): GraphBasedContext to register.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.contexts.globals.GlobalTracingContext.try_deregister">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">try_deregister</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph_based_context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#nnsight.tracing.contexts.tracer.Tracer" title="nnsight.tracing.contexts.tracer.Tracer"><span class="pre">Tracer</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#nnsight.tracing.contexts.globals.GlobalTracingContext.try_deregister" title="Link to this definition">¶</a></dt>
+<dd><p>Attempts to deregister a <cite>Graph</cite> globally.
+Will not if <cite>graph_based_context</cite> does not have the same <cite>Graph</cite> as the currently registered one.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>graph_based_context (GraphBasedContext): <cite>GraphBasedContext</cite> to deregister.</p>
+</dd>
+<dt>Returns:</dt><dd><p>bool: True if deregistering ws successful, False otherwise.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.contexts.globals.GlobalTracingContext.try_register">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">try_register</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph_based_context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#nnsight.tracing.contexts.tracer.Tracer" title="nnsight.tracing.contexts.tracer.Tracer"><span class="pre">Tracer</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#nnsight.tracing.contexts.globals.GlobalTracingContext.try_register" title="Link to this definition">¶</a></dt>
+<dd><p>Attempts to register a <cite>Graph</cite> globally.]
+Will not if one is already registered.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>graph_based_context (GraphBasedContext): <cite>GraphBasedContext</cite> to register.</p>
+</dd>
+<dt>Returns:</dt><dd><p>bool: True if registering ws successful, False otherwise.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class" id="module-nnsight.tracing.contexts.iterator">
+<dt class="sig sig-object py" id="nnsight.tracing.contexts.iterator.Iterator">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nnsight.tracing.contexts.iterator.</span></span><span class="sig-name descname"><span class="pre">Iterator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">collection</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Collection</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nnsight.tracing.contexts.iterator.Iterator" title="Link to this definition">¶</a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="nnsight.tracing.contexts.iterator.Iterator.style">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">style</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nnsight.tracing.contexts.iterator.Iterator.style" title="Link to this definition">¶</a></dt>
+<dd><p>Visualization style for this protocol node.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><ul class="simple">
+<li><p>Dict: dictionary style.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class" id="module-nnsight.tracing.contexts.tracer">
+<dt class="sig sig-object py" id="nnsight.tracing.contexts.tracer.Tracer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nnsight.tracing.contexts.tracer.</span></span><span class="sig-name descname"><span class="pre">Tracer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">backend:</span> <span class="pre">~nnsight.tracing.backends.base.Backend</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent:</span> <span class="pre">~nnsight.tracing.graph.graph.GraphType</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">graph:</span> <span class="pre">~nnsight.tracing.graph.graph.GraphType</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">graph_class:</span> <span class="pre">~typing.Type[~nnsight.tracing.graph.graph.SubGraph]</span> <span class="pre">=</span> <span class="pre">&lt;class</span> <span class="pre">'nnsight.tracing.graph.graph.SubGraph'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_class:</span> <span class="pre">~typing.Type[~nnsight.tracing.graph.node.NodeType]</span> <span class="pre">=</span> <span class="pre">&lt;class</span> <span class="pre">'nnsight.tracing.graph.node.Node'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proxy_class:</span> <span class="pre">~typing.Type[~nnsight.tracing.graph.proxy.ProxyType]</span> <span class="pre">=</span> <span class="pre">&lt;class</span> <span class="pre">'nnsight.tracing.graph.proxy.Proxy'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nnsight.tracing.contexts.tracer.Tracer" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="intervention.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">nnsight.intervention</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="modeling.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">nnsight.modeling</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2025, Jaden Fiotto-Kaufman
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">nnsight.tracing</a><ul>
+<li><a class="reference internal" href="#nnsight.tracing.graph.graph.Graph"><code class="docutils literal notranslate"><span class="pre">Graph</span></code></a><ul>
+<li><a class="reference internal" href="#nnsight.tracing.graph.graph.Graph.add"><code class="docutils literal notranslate"><span class="pre">Graph.add()</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.graph.Graph.clean"><code class="docutils literal notranslate"><span class="pre">Graph.clean()</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.graph.Graph.copy"><code class="docutils literal notranslate"><span class="pre">Graph.copy()</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.graph.Graph.create"><code class="docutils literal notranslate"><span class="pre">Graph.create()</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.graph.Graph.execute"><code class="docutils literal notranslate"><span class="pre">Graph.execute()</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.graph.Graph.reset"><code class="docutils literal notranslate"><span class="pre">Graph.reset()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.graph.SubGraph"><code class="docutils literal notranslate"><span class="pre">SubGraph</span></code></a><ul>
+<li><a class="reference internal" href="#nnsight.tracing.graph.graph.SubGraph.Iterator"><code class="docutils literal notranslate"><span class="pre">SubGraph.Iterator</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.graph.SubGraph.add"><code class="docutils literal notranslate"><span class="pre">SubGraph.add()</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.graph.SubGraph.copy"><code class="docutils literal notranslate"><span class="pre">SubGraph.copy()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.node.Node"><code class="docutils literal notranslate"><span class="pre">Node</span></code></a><ul>
+<li><a class="reference internal" href="#nnsight.tracing.graph.node.Node.attached"><code class="docutils literal notranslate"><span class="pre">Node.attached</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.node.Node.create"><code class="docutils literal notranslate"><span class="pre">Node.create()</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.node.Node.dependencies"><code class="docutils literal notranslate"><span class="pre">Node.dependencies</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.node.Node.destroy"><code class="docutils literal notranslate"><span class="pre">Node.destroy()</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.node.Node.done"><code class="docutils literal notranslate"><span class="pre">Node.done</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.node.Node.execute"><code class="docutils literal notranslate"><span class="pre">Node.execute()</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.node.Node.fulfilled"><code class="docutils literal notranslate"><span class="pre">Node.fulfilled</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.node.Node.listeners"><code class="docutils literal notranslate"><span class="pre">Node.listeners</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.node.Node.prepare_inputs"><code class="docutils literal notranslate"><span class="pre">Node.prepare_inputs()</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.node.Node.preprocess"><code class="docutils literal notranslate"><span class="pre">Node.preprocess()</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.node.Node.redundant"><code class="docutils literal notranslate"><span class="pre">Node.redundant</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.node.Node.reset"><code class="docutils literal notranslate"><span class="pre">Node.reset()</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.node.Node.set_value"><code class="docutils literal notranslate"><span class="pre">Node.set_value()</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.node.Node.subgraph"><code class="docutils literal notranslate"><span class="pre">Node.subgraph()</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.node.Node.update_dependencies"><code class="docutils literal notranslate"><span class="pre">Node.update_dependencies()</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.node.Node.update_listeners"><code class="docutils literal notranslate"><span class="pre">Node.update_listeners()</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.node.Node.value"><code class="docutils literal notranslate"><span class="pre">Node.value</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.proxy.Proxy"><code class="docutils literal notranslate"><span class="pre">Proxy</span></code></a><ul>
+<li><a class="reference internal" href="#nnsight.tracing.graph.proxy.Proxy.save"><code class="docutils literal notranslate"><span class="pre">Proxy.save()</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.graph.proxy.Proxy.value"><code class="docutils literal notranslate"><span class="pre">Proxy.value</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#nnsight.tracing.contexts.base.Context"><code class="docutils literal notranslate"><span class="pre">Context</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.contexts.conditional.Condition"><code class="docutils literal notranslate"><span class="pre">Condition</span></code></a><ul>
+<li><a class="reference internal" href="#nnsight.tracing.contexts.conditional.Condition.style"><code class="docutils literal notranslate"><span class="pre">Condition.style()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#nnsight.tracing.contexts.globals.GlobalTracingContext"><code class="docutils literal notranslate"><span class="pre">GlobalTracingContext</span></code></a><ul>
+<li><a class="reference internal" href="#nnsight.tracing.contexts.globals.GlobalTracingContext.GlobalTracingExit"><code class="docutils literal notranslate"><span class="pre">GlobalTracingContext.GlobalTracingExit</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.contexts.globals.GlobalTracingContext.deregister"><code class="docutils literal notranslate"><span class="pre">GlobalTracingContext.deregister()</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.contexts.globals.GlobalTracingContext.register"><code class="docutils literal notranslate"><span class="pre">GlobalTracingContext.register()</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.contexts.globals.GlobalTracingContext.try_deregister"><code class="docutils literal notranslate"><span class="pre">GlobalTracingContext.try_deregister()</span></code></a></li>
+<li><a class="reference internal" href="#nnsight.tracing.contexts.globals.GlobalTracingContext.try_register"><code class="docutils literal notranslate"><span class="pre">GlobalTracingContext.try_register()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#nnsight.tracing.contexts.iterator.Iterator"><code class="docutils literal notranslate"><span class="pre">Iterator</span></code></a><ul>
+<li><a class="reference internal" href="#nnsight.tracing.contexts.iterator.Iterator.style"><code class="docutils literal notranslate"><span class="pre">Iterator.style()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#nnsight.tracing.contexts.tracer.Tracer"><code class="docutils literal notranslate"><span class="pre">Tracer</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=1dd76d02"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=5fa4622c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    </body>
+</html>
