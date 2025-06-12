@@ -57,8 +57,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="" />
-<link href="../../../../_static/css/custom.css?v=1749744635" rel="stylesheet" type="text/css" />
-<link href="../../../../_static/css/home.css?v=1749744635" rel="stylesheet" type="text/css" />
+<link href="../../../../_static/css/custom.css?v=1749754275" rel="stylesheet" type="text/css" />
+<link href="../../../../_static/css/home.css?v=1749754275" rel="stylesheet" type="text/css" />
 
   </head>
   
@@ -539,15 +539,12 @@
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">TYPE_CHECKING</span><span class="p">,</span>
     <span class="n">Any</span><span class="p">,</span>
     <span class="n">Dict</span><span class="p">,</span>
-    <span class="n">Generic</span><span class="p">,</span>
     <span class="n">List</span><span class="p">,</span>
     <span class="n">Optional</span><span class="p">,</span>
-    <span class="n">Protocol</span><span class="p">,</span>
     <span class="n">Tuple</span><span class="p">,</span>
     <span class="n">Type</span><span class="p">,</span>
     <span class="n">Union</span><span class="p">,</span>
@@ -565,13 +562,13 @@
     <span class="n">PreTrainedModel</span><span class="p">,</span>
     <span class="n">PreTrainedTokenizer</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">transformers.generation.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">GenerationMixin</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">transformers.models.auto</span><span class="w"> </span><span class="kn">import</span> <span class="n">modeling_auto</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">transformers.models.llama.configuration_llama</span><span class="w"> </span><span class="kn">import</span> <span class="n">LlamaConfig</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing_extensions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Self</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">..intervention</span><span class="w"> </span><span class="kn">import</span> <span class="n">Envoy</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">..intervention.contexts</span><span class="w"> </span><span class="kn">import</span> <span class="n">InterleavingTracer</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">..intervention.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">InterventionNodeType</span><span class="p">,</span> <span class="n">InterventionProxyType</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..intervention.envoy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Envoy</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..intervention.tracing.tracer</span><span class="w"> </span><span class="kn">import</span> <span class="n">InterleavingTracer</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..util</span><span class="w"> </span><span class="kn">import</span> <span class="n">WrapperModule</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.mixins</span><span class="w"> </span><span class="kn">import</span> <span class="n">RemoteableMixin</span>
 
@@ -599,31 +596,7 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">__methods__</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;generate&quot;</span><span class="p">:</span> <span class="s2">&quot;_generate&quot;</span><span class="p">}</span>
-
     <span class="n">tokenizer</span><span class="p">:</span> <span class="n">PreTrainedTokenizer</span>
-
-<div class="viewcode-block" id="LanguageModel.Generator">
-<a class="viewcode-back" href="../../../../documentation/modeling/#nnsight.modeling.language.LanguageModel.Generator">[docs]</a>
-    <span class="k">class</span><span class="w"> </span><span class="nc">Generator</span><span class="p">(</span><span class="n">WrapperModule</span><span class="p">):</span>
-
-<div class="viewcode-block" id="LanguageModel.Generator.Streamer">
-<a class="viewcode-back" href="../../../../documentation/modeling/#nnsight.modeling.language.LanguageModel.Generator.Streamer">[docs]</a>
-        <span class="k">class</span><span class="w"> </span><span class="nc">Streamer</span><span class="p">(</span><span class="n">WrapperModule</span><span class="p">):</span>
-
-            <span class="k">def</span><span class="w"> </span><span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
-                <span class="k">return</span> <span class="bp">self</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
-
-            <span class="k">def</span><span class="w"> </span><span class="nf">end</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-                <span class="k">pass</span></div>
-
-
-        <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-
-            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-
-            <span class="bp">self</span><span class="o">.</span><span class="n">streamer</span> <span class="o">=</span> <span class="n">LanguageModel</span><span class="o">.</span><span class="n">Generator</span><span class="o">.</span><span class="n">Streamer</span><span class="p">()</span></div>
-
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -642,13 +615,27 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">tokenizer</span> <span class="o">=</span> <span class="n">tokenizer</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">repo_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">repo_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">generator</span><span class="p">:</span> <span class="n">Envoy</span><span class="p">[</span><span class="n">InterventionProxyType</span><span class="p">,</span> <span class="n">InterventionNodeType</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">LanguageModel</span><span class="o">.</span><span class="n">Generator</span><span class="p">()</span>
-        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">generator</span><span class="p">:</span> <span class="n">Envoy</span> <span class="o">=</span> <span class="n">WrapperModule</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__nnsight_generate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="n">max_new_tokens</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_new_tokens&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">max_new_tokens</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interleaver</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_interleaver</span><span class="o">.</span><span class="n">default_all</span> <span class="o">=</span> <span class="n">max_new_tokens</span>
+
+        <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interleaver</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_interleaver</span><span class="o">.</span><span class="n">default_all</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generator</span><span class="o">.</span><span class="n">_module</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">output</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_load_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">repo_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 
@@ -791,30 +778,33 @@
             <span class="k">if</span> <span class="n">labels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">labels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tokenize</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)[</span><span class="s2">&quot;input_ids&quot;</span><span class="p">]</span>
 
-        <span class="k">return</span> <span class="p">((</span><span class="n">inputs</span><span class="p">,),</span> <span class="p">{</span><span class="s2">&quot;labels&quot;</span><span class="p">:</span> <span class="n">labels</span><span class="p">}),</span> <span class="nb">len</span><span class="p">(</span><span class="n">inputs</span><span class="p">[</span><span class="s2">&quot;input_ids&quot;</span><span class="p">])</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(),</span> <span class="p">{</span><span class="o">**</span><span class="n">inputs</span><span class="p">,</span> <span class="s2">&quot;labels&quot;</span><span class="p">:</span> <span class="n">labels</span><span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_batch</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">batched_inputs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">BatchEncoding</span><span class="p">],</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]],</span>
-        <span class="nb">input</span><span class="p">:</span> <span class="n">BatchEncoding</span><span class="p">,</span>
-        <span class="n">labels</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">prepared_kwargs</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
 
         <span class="k">if</span> <span class="n">batched_inputs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">((</span><span class="nb">input</span><span class="p">,),</span> <span class="p">{</span><span class="s2">&quot;labels&quot;</span><span class="p">:</span> <span class="n">labels</span><span class="p">})</span>
+            <span class="k">return</span> <span class="p">(</span><span class="nb">tuple</span><span class="p">(),</span> <span class="n">prepared_kwargs</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">prepared_kwargs</span><span class="p">[</span><span class="s2">&quot;input_ids&quot;</span><span class="p">])</span>
 
-        <span class="n">batched_labels</span> <span class="o">=</span> <span class="n">batched_inputs</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;labels&quot;</span><span class="p">]</span>
-        <span class="n">batched_inputs</span> <span class="o">=</span> <span class="n">batched_inputs</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">batched_inputs</span> <span class="o">=</span> <span class="n">batched_inputs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">batched_labels</span> <span class="o">=</span> <span class="n">batched_inputs</span><span class="p">[</span><span class="s2">&quot;labels&quot;</span><span class="p">]</span>
 
         <span class="n">attention_mask</span> <span class="o">=</span> <span class="n">batched_inputs</span><span class="p">[</span><span class="s2">&quot;attention_mask&quot;</span><span class="p">]</span>
-        <span class="n">batched_inputs</span> <span class="o">=</span> <span class="p">[</span>
+
+        <span class="n">batched_ids</span> <span class="o">=</span> <span class="p">[</span>
             <span class="p">{</span><span class="s2">&quot;input_ids&quot;</span><span class="p">:</span> <span class="n">ids</span><span class="p">}</span>
             <span class="k">for</span> <span class="n">ids</span> <span class="ow">in</span> <span class="p">[</span>
                 <span class="o">*</span><span class="n">batched_inputs</span><span class="p">[</span><span class="s2">&quot;input_ids&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
-                <span class="o">*</span><span class="nb">input</span><span class="p">[</span><span class="s2">&quot;input_ids&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+                <span class="o">*</span><span class="n">prepared_kwargs</span><span class="p">[</span><span class="s2">&quot;input_ids&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
             <span class="p">]</span>
         <span class="p">]</span>
-        <span class="n">batched_inputs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tokenizer</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">batched_inputs</span><span class="p">,</span> <span class="n">return_tensors</span><span class="o">=</span><span class="s2">&quot;pt&quot;</span><span class="p">)</span>
+        <span class="n">new_batched_inputs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tokenizer</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">batched_ids</span><span class="p">,</span> <span class="n">return_tensors</span><span class="o">=</span><span class="s2">&quot;pt&quot;</span><span class="p">)</span>
+
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">prepared_kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;labels&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">labels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
 
@@ -822,50 +812,23 @@
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">tokenizer</span><span class="o">.</span><span class="n">padding_side</span> <span class="o">==</span> <span class="s2">&quot;left&quot;</span><span class="p">:</span>
 
-            <span class="n">batched_inputs</span><span class="p">[</span><span class="s2">&quot;attention_mask&quot;</span><span class="p">][</span>
+            <span class="n">new_batched_inputs</span><span class="p">[</span><span class="s2">&quot;attention_mask&quot;</span><span class="p">][</span>
                 <span class="p">:</span> <span class="n">attention_mask</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">-</span><span class="n">attention_mask</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="p">:</span>
             <span class="p">]</span> <span class="o">=</span> <span class="n">attention_mask</span>
 
         <span class="k">else</span><span class="p">:</span>
 
-            <span class="n">batched_inputs</span><span class="p">[</span><span class="s2">&quot;attention_mask&quot;</span><span class="p">][</span>
+            <span class="n">new_batched_inputs</span><span class="p">[</span><span class="s2">&quot;attention_mask&quot;</span><span class="p">][</span>
                 <span class="p">:</span> <span class="n">attention_mask</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">:</span> <span class="n">attention_mask</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
             <span class="p">]</span> <span class="o">=</span> <span class="n">attention_mask</span>
 
-        <span class="k">return</span> <span class="p">((</span><span class="n">batched_inputs</span><span class="p">,),</span> <span class="p">{</span><span class="s2">&quot;labels&quot;</span><span class="p">:</span> <span class="n">batched_labels</span><span class="p">})</span>
+        <span class="n">batched_inputs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;input_ids&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">batched_inputs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;attention_mask&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">:</span> <span class="n">BatchEncoding</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-
-        <span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="p">(</span>
-            <span class="o">**</span><span class="n">inputs</span><span class="p">,</span>
-            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-        <span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_generate</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">inputs</span><span class="p">:</span> <span class="n">BatchEncoding</span><span class="p">,</span>
-        <span class="n">max_new_tokens</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-        <span class="n">streamer</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-    <span class="p">):</span>
-
-        <span class="k">if</span> <span class="n">streamer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">streamer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generator</span><span class="o">.</span><span class="n">streamer</span>
-
-        <span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-
-        <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span>
-            <span class="o">**</span><span class="n">inputs</span><span class="p">,</span>
-            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-            <span class="n">streamer</span><span class="o">=</span><span class="n">streamer</span><span class="p">,</span>
-            <span class="n">max_new_tokens</span><span class="o">=</span><span class="n">max_new_tokens</span><span class="p">,</span>
-        <span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">generator</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">output</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="nb">tuple</span><span class="p">(),</span>
+            <span class="p">{</span><span class="o">**</span><span class="n">new_batched_inputs</span><span class="p">,</span> <span class="o">**</span><span class="n">batched_inputs</span><span class="p">,</span> <span class="s2">&quot;labels&quot;</span><span class="p">:</span> <span class="n">batched_labels</span><span class="p">},</span>
+        <span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">prepared_kwargs</span><span class="p">[</span><span class="s2">&quot;input_ids&quot;</span><span class="p">])</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_remoteable_model_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
@@ -886,10 +849,10 @@
 
 <div class="viewcode-block" id="LanguageModel">
 <a class="viewcode-back" href="../../../../documentation/modeling/#nnsight.modeling.language.LanguageModel">[docs]</a>
-    <span class="k">class</span><span class="w"> </span><span class="nc">LanguageModel</span><span class="p">(</span><span class="n">LanguageModel</span><span class="p">,</span> <span class="n">PreTrainedModel</span><span class="p">):</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">LanguageModel</span><span class="p">(</span><span class="n">GenerationMixin</span><span class="p">,</span> <span class="n">LanguageModel</span><span class="p">,</span> <span class="n">PreTrainedModel</span><span class="p">):</span>
 
-        <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">InterleavingTracer</span><span class="p">:</span>
-            <span class="k">pass</span></div>
+        <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">InterleavingTracer</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
 </pre></div>
 

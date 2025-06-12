@@ -27,13 +27,19 @@
             /* Border color */
         }
 
+        .accordion-item {
+            border: 1px solid var(--pst-color-border);
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+        }
+
         .accordion {
             --bs-accordion-btn-icon: none;
             --bs-accordion-btn-active-icon: none;
         }
 
         .custom-accordion-header.collapsed {
-            background-color: var(--pst-color-on-background);
+            background-color: var(--pst-color-surface);
             /* Collapsed state background color */
             color: var(--pst-color-text-base);
             /* Text color */
@@ -47,16 +53,24 @@
         }
 
         .custom-accordion-body {
-            background-color: var(--pst-color-on-background);
+            background-color: var(--pst-color-surface);
             /* Body background color */
             border-color: var(--pst-color-border);
             /* Border color */
             color: var(--pst-color-text-base);
             /* Text color */
+            padding: 1rem;
         }
 
         .sd-card {
             border-radius: 0 !important;
+        }
+
+        /* Add styles for status text */
+        .status-container p.sd-card-text {
+            font-weight: 600;
+            margin: 0;
+            padding: 0.5rem 1rem;
         }
 
         #loader {
@@ -98,10 +112,85 @@
 
     <script>
 
-        let ndif_url = "https://ndif.dev"
-        let error_color = "#7e0000"
-        let success_color = "#66800b"
-        let warning_color = "#7d7106"
+        let ndif_url = "http://localhost:5001"
+        let error_color = "#7e0000"  // Red for FAILED/UNHEALTHY
+        let success_color = "#2bab38"  // Green for RUNNING
+        let warning_color = "#7d7106"  // Yellow for other states
+
+        let dedicated_color = "#31945d"
+        let hot_color = "#2bab38"
+        let warm_color = "#319480"
+        let scheduled_color = "#5baec9"
+
+
+
+        function getDeploymentLevelColor(deployment_level) {
+            switch(deployment_level) {
+                case "DEDICATED":
+                    return dedicated_color;
+                case "HOT":
+                    return hot_color;
+                case "WARM":
+                    return warm_color;
+                case "SCHEDULED":
+                    return scheduled_color;
+
+
+            }
+        }
+
+        let not_started_color = "#bd5c1c"
+        let deploying_color = "#bd5c1c"
+        let deploy_failed_color = "#a8323c"
+        let running_color = "#2bab38"
+        let unhealthy_color = "#a8323c"
+
+        function getApplicationStateColor(application_state) {
+            switch(application_state) {
+                case "NOT_STARTED":
+                    return not_started_color;
+                case "DEPLOYING":
+                    return deploying_color;
+                case "DEPLOY_FAILED":
+                    return deploy_failed_color;
+                case "RUNNING":
+                    return running_color;
+                case "UNHEALTHY":
+                    return unhealthy_color;
+            }
+        }
+        
+
+        function formatTimeRemaining(endTime) {
+            const now = new Date();
+            const end = new Date(endTime);
+            
+            const diff = end - now;
+            
+            if (diff < 0) return "Ended";
+            
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            return `${hours}h ${minutes}m remaining`;
+        }
+
+        function formatSchedule(schedule) {
+            if (!schedule) return "No schedule";
+            
+            const now = new Date();
+            const start = new Date(schedule.start_time);
+            const end = new Date(schedule.end_time);
+            
+            if (now > end) return "Ended";
+            if (now >= start && now <= end) {
+                return formatTimeRemaining(schedule.end_time);
+            }
+            if (now < start) {
+                const startStr = start.toLocaleString();
+                const duration = Math.round((end - start) / (1000 * 60 * 60));
+                return `Starts ${startStr} (${duration}h duration)`;
+            }
+        }
 
         function autoFormatJsonString(jsonString) {
             // Parse the JSON string into an object
@@ -130,101 +219,119 @@
             document.getElementById("loader").style.display = flag ? "block" : "none";
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
+        function updateScheduleDisplay() {
+            document.querySelectorAll('.schedule-info').forEach(el => {
+                const schedule = JSON.parse(el.dataset.schedule);
+                el.textContent = formatSchedule(schedule);
+            });
+        }
 
+        function startScheduleTimer() {
+            // Update immediately
+            updateScheduleDisplay();
+            // Then update every minute
+            setInterval(updateScheduleDisplay, 60000);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
             loading(true);
 
             update("Fetching NDIF status...", warning_color);
 
             fetch(ndif_url + "/ping")
-
                 .then((response) => {
                     if (response.status == 200) {
-
                         update("NDIF is up. Fetching model status...", warning_color);
 
                         console.log('Ping success');
-                        // Nested fetch to ndif.dev/stats
-                        fetch(ndif_url + "/stats")
+                        fetch(ndif_url + "/status")
                             .then((statsResponse) => {
-
                                 loading(false);
 
                                 if (statsResponse.status == 200) {
-                                    statsResponse.json().then((parsed) => {
-                                        // Initialize an empty string to accumulate information
+                                    statsResponse.json().then((response) => {
+                                        console.log('Parsed response:', response);
+                                        
                                         let infoString = '';
-
                                         let index = 0;
 
-                                        let modelSummary = {};
-
-                                        if (parsed.length === 0) {
-
+                                        if (!response.deployments || Object.keys(response.deployments).length === 0) {
                                             update("NDIF is up but there are no models deployed. Seems unintentional.", error_color);
-
-                                            return
+                                            return;
                                         }
-
 
                                         update("NDIF is operational.", success_color);
 
-                                        Object.values(parsed).forEach((value) => {
-                                            // Create a unique key for each model-config combination
-                                            let modelConfigKey = `${value.repo_id}`;
-
-                                            // Check if this model-config combination already exists in the summary
-                                            if (modelSummary[modelConfigKey]) {
-                                                // Increment the count if it does
-                                                modelSummary[modelConfigKey].number_of_copies += 1;
-                                            } else {
-                                                // Otherwise, add a new entry
-                                                modelSummary[modelConfigKey] = {
-                                                    number_of_copies: 1,
-                                                    config_string: value.config_json_string
-                                                };
-                                            }
-                                        });
-
-                                        // Now modelSummary contains the consolidated information
-                                        console.log(modelSummary);
-
-                                        // Iterate through the JSON dictionary and append information
-                                        // Iterate through the modelSummary dictionary and append information
-                                        Object.keys(modelSummary).forEach((key) => {
+                                        // Add calendar link if available
+                                        const calendarLink = response.calendar_id ? 
+                                            `<a href="https://calendar.google.com/calendar/embed?src=${encodeURIComponent(response.calendar_id)}" target="_blank" style="display: block; margin-bottom: 1rem; text-decoration: none;">View Dedicated Deployment Calendar ↗</a>` : '';
+                                        // Sort deployments by deployment_level in the desired order
+                                        const deploymentOrder = ["DEDICATED", "HOT", "WARM", "SCHEDULED", "COLD"];
+                                        Object.entries(response.deployments)
+                                            .sort(([, a], [, b]) => {
+                                                const aLevel = deploymentOrder.indexOf(a.deployment_level);
+                                                const bLevel = deploymentOrder.indexOf(b.deployment_level);
+                                                // If not found, put at the end
+                                                return (aLevel === -1 ? deploymentOrder.length : aLevel) - (bLevel === -1 ? deploymentOrder.length : bLevel);
+                                            })
+                                            .forEach(([key, value]) => {
                                             var headingId = 'heading' + (index + 1);
                                             var collapseId = 'collapse' + (index + 1);
 
-                                            const summaryItem = modelSummary[key];
-                                            const configJsonString = summaryItem.config_string;
+                                            const configJsonString = value.config;
+                                            const deployment_level = value.deployment_level;
+                                            const application_state = value.application_state;
+                                            const schedule = value.schedule;
 
                                             let jsonObject = JSON.parse(configJsonString);
+                                            let prettyPrintedJson = '';
+                                            if (Object.keys(jsonObject).length > 0) {
+                                                prettyPrintedJson = JSON.stringify(jsonObject, null, 4);
+                                                prettyPrintedJson = prettyPrintedJson.replace(/"([^"]+)":/g, '"<b>$1</b>":');
+                                            }
+                                            let huggingFaceLink = `<a href="http://huggingface.co/${value.title}" target="_blank">HuggingFace Model Repository ↗</a>`;
 
-                                            // Convert the object back into a string with indentation
-                                            let prettyPrintedJson = JSON.stringify(jsonObject, null, 4);
+                                            const deploymentLevelColor = getDeploymentLevelColor(deployment_level);
+                                            const deploymentLevelBadge = `<span style="background-color: ${deploymentLevelColor}; color: white; padding: 2px 8px; border-radius: 4px; margin-right: 8px;">${deployment_level}</span>`;
 
-                                            prettyPrintedJson = prettyPrintedJson.replace(/"([^"]+)":/g, '"<b>$1</b>":');
-                                            let huggingFaceLink = `<a href="http://huggingface.co/${key}" target="_blank">HuggingFace Model Repository ↗</a>`;
+                                            // Only show application state if it exists
+                                            let applicationStateBadge = '';
+                                            if (application_state !== undefined && application_state !== null) {
+                                                const applicationStateColor = getApplicationStateColor(application_state);
+                                                applicationStateBadge = `<span style="background-color: ${applicationStateColor}; color: white; padding: 2px 8px; border-radius: 4px; margin-right: 8px;">${application_state}</span>`;
+                                            }
+                                            
+                                            // Create schedule info with data attribute for updates
+                                            const scheduleInfo = schedule ? 
+                                                `<span class="schedule-info" data-schedule='${JSON.stringify(schedule)}' style="background-color: #f8f9fa; color: #495057; padding: 2px 8px; border-radius: 4px; margin-left: 8px; border: 1px solid #dee2e6;">${formatSchedule(schedule)}</span>` : '';
 
                                             infoString += `<div class="accordion-item">
                                                     <h2 class="accordion-header" id="${headingId}">
-                                                        <button class="accordion-button custom-accordion-header collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}">
-                                                            (${summaryItem.number_of_copies}x) ${key}
+                                                        <button class="accordion-button custom-accordion-header collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}" style="display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left;">
+                                                            <div style="display: flex; align-items: center; flex: 1;">
+                                                                ${deploymentLevelBadge}${applicationStateBadge}<span style="font-weight: 600;">${value.title}</span>
+                                                            </div>
+                                                            <div style="margin-left: auto;">
+                                                                ${scheduleInfo}
+                                                            </div>
                                                         </button>
                                                     </h2>
                                                     <div id="${collapseId}" class="accordion-collapse collapse" aria-labelledby="${headingId}" data-bs-parent="#accordionExample">
-                                                        <div class="accordion-body custom-accordion-body">${huggingFaceLink}<pre>${prettyPrintedJson}</pre></div>
+                                                        <div class="accordion-body custom-accordion-body">
+                                                            ${huggingFaceLink}
+                                                            ${prettyPrintedJson ? `<pre>${prettyPrintedJson}</pre>` : ''}
+                                                        </div>
                                                     </div>
                                                 </div>`;
-
 
                                             index++;
                                         });
 
                                         var elm = document.getElementById("accordionHook");
+                                        elm.innerHTML = calendarLink + infoString;
 
-                                        elm.innerHTML = infoString;
-
+                                        // Start the schedule update timer
+                                        startScheduleTimer();
 
                                         console.log('Stats success');
                                     }).catch((jsonError) => {
@@ -232,7 +339,6 @@
                                     });
                                 } else {
                                     update("Unable to get NDIF status.", error_color);
-
                                 }
                             })
                             .catch((statsError) => {
@@ -252,7 +358,6 @@
                     loading(false);
                     console.error('Ping fetch failed:', pingError);
                 });
-
         }, false);
     </script>
 
