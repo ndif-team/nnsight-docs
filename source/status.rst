@@ -86,7 +86,7 @@
             font-size: 12px;
         }
 
-        .schedule-info {
+        .schedule-info, .minutes-left {
             font-family: "Lucida Console", monospace;
             background-color: var(--pst-color-surface) !important;
             color: var(--pst-color-text-base) !important;
@@ -108,7 +108,7 @@
                 gap: 8px !important;
             }
             
-            .schedule-info {
+            .schedule-info, .minutes-left {
                 margin-left: 0 !important;
                 margin-top: 4px !important;
             }
@@ -201,9 +201,9 @@
         let ndif_url = "http://localhost:5001"
         let error_color = "#7e0000"  // Red for FAILED/UNHEALTHY
         let success_color = "#2bab38"  // Green for RUNNING
-        let warning_color = "#fad12d"  // Yellow for other states
+        let warning_color = "#a85100"  // Yellow for other states
 
-        let dedicated_color = "#31945d"
+        let dedicated_color = "#2bab38"
         let hot_color = "#2bab38"
         let warm_color = "#319480"
         let scheduled_color = "#5baec9"
@@ -228,9 +228,9 @@
         function getDeploymentLevelToolTip(deployment_level) {
             switch(deployment_level) {
                 case "DEDICATED":
-                    return "This model is on GPU and ready to serve. It is guarenteed to be running until the scheduled end time.";
+                    return "This model is on GPU and ready to serve. It is guaranteed to be running until the scheduled end time.";
                 case "HOT":
-                    return "This model is on GPU and ready to serve. It may be evicted depending on model traffic after a minimum amount of time.";
+                    return "This model is on GPU and ready to serve. It may be evicted depending on model traffic after a minimum amount of time being pinned.";
                 case "WARM":
                     return "This model is cached on CPU and will be quickly loaded into GPU when requested assuming it can be accomodated.";
                 case "SCHEDULED":
@@ -327,11 +327,30 @@
             });
         }
 
+        function updateMinutesLeftDisplay() {
+            document.querySelectorAll('.minutes-left').forEach(el => {
+                
+                
+                const minutesleft = el.dataset.minutesleft;
+
+                if (minutesleft > 0) {
+                    el.textContent = "Pinned for " + minutesleft + " minute" + (minutesleft == 1 ? "" : "s");
+                }
+                else {
+                    el.textContent = "Evictable";
+                }
+
+                el.dataset.minutesleft -= 1;
+            });
+        }
+
         function startScheduleTimer() {
             // Update immediately
             updateScheduleDisplay();
+            updateMinutesLeftDisplay();
             // Then update every minute
             setInterval(updateScheduleDisplay, 60000);
+            setInterval(updateMinutesLeftDisplay, 60000);
         }
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -383,6 +402,7 @@
                                             const deployment_level = value.deployment_level;
                                             const application_state = value.application_state;
                                             const schedule = value.schedule;
+                                            const minutesleft = value.minutesleft;
 
                                             let prettyPrintedJson = '';
                                             if (configJsonString) {
@@ -404,8 +424,12 @@
                                             }
                                             
                                             // Create schedule info with data attribute for updates
-                                            const scheduleInfo = schedule ? 
-                                                `<span class="schedule-info" data-schedule='${JSON.stringify(schedule)}'>${formatSchedule(schedule)}</span>` : '';
+                                            let scheduleInfo = '';
+                                            if (schedule !== undefined && schedule !== null) {
+                                                scheduleInfo =  `<span class="schedule-info" data-schedule='${JSON.stringify(schedule)}'>${formatSchedule(schedule)}</span>`;
+                                            } else if (minutesleft !== undefined && minutesleft !== null) {
+                                                scheduleInfo =  `<span class="minutes-left" data-minutesleft='${minutesleft}'></span>`;
+                                            }
 
                                             infoString += `<div class="accordion-item">
                                                     <h2 class="accordion-header" id="${headingId}">
