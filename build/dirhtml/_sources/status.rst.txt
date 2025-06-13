@@ -4,6 +4,10 @@
 .. raw:: html
 
     <style>
+        .bd-article-container {
+            overflow-x: unset !important;
+        }
+        
         .accordion-header {
             margin: 0 !important;
         }
@@ -73,6 +77,101 @@
             padding: 0.5rem 1rem;
         }
 
+        .badge {
+            font-family: "Lucida Console", monospace;
+            color: white;
+            padding: 2px 8px; 
+            border-radius: 4px; 
+            margin-right: 8px;
+            font-size: 12px;
+        }
+
+        .schedule-info {
+            font-family: "Lucida Console", monospace;
+            background-color: var(--pst-color-surface) !important;
+            color: var(--pst-color-text-base) !important;
+            padding: 2px 8px !important;
+            border-radius: 4px !important;
+            margin-left: 8px !important;
+            border: 1px solid var(--pst-color-border) !important;
+            font-size: 12px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            height: 20px !important;
+            white-space: normal !important;
+            word-break: break-word !important;
+        }
+
+        @media (max-width: 768px) {
+            .accordion-button {
+                flex-wrap: wrap !important;
+                gap: 8px !important;
+            }
+            
+            .schedule-info {
+                margin-left: 0 !important;
+                margin-top: 4px !important;
+            }
+
+            .badge[data-tooltip]:hover::after {
+                left: 0;
+                transform: none;
+                max-width: 200px;
+            }
+
+            .badge[data-tooltip]:hover::before {
+                left: 20px;
+                transform: none;
+            }
+        }
+
+        /* Custom tooltip styles */
+        .badge[data-tooltip] {
+            position: relative;
+            cursor: help;
+        }
+
+        .badge[data-tooltip]:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 12px;
+            background-color: var(--pst-color-surface);
+            color: var(--pst-color-text-base);
+            border: 1px solid var(--pst-color-border);
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: normal;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-family: var(--pst-font-family-base);
+            font-weight: normal;
+            width: max-content;
+            max-width: 300px;
+            text-align: center;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .badge[data-tooltip]:hover::before {
+            content: '';
+            position: absolute;
+            bottom: calc(100% + 4px);
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 4px;
+            border-style: solid;
+            border-color: var(--pst-color-border) transparent transparent transparent;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* Hide native tooltip */
+        .badge[title] {
+            text-decoration: none;
+        }
+
         #loader {
             width: 120px;
             height: 120px;
@@ -114,14 +213,14 @@
 
         let ndif_url = "http://localhost:5001"
         let error_color = "#7e0000"  // Red for FAILED/UNHEALTHY
-        let success_color = "#66800b"  // Green for RUNNING
-        let warning_color = "#7d7106"  // Yellow for other states
+        let success_color = "#2bab38"  // Green for RUNNING
+        let warning_color = "#fad12d"  // Yellow for other states
 
         let dedicated_color = "#31945d"
         let hot_color = "#2bab38"
         let warm_color = "#319480"
         let scheduled_color = "#5baec9"
-
+        let cold_color = "#13159e"
 
 
         function getDeploymentLevelColor(deployment_level) {
@@ -134,8 +233,23 @@
                     return warm_color;
                 case "SCHEDULED":
                     return scheduled_color;
+                case "COLD":
+                    return cold_color;
+            }
+        }
 
-
+        function getDeploymentLevelToolTip(deployment_level) {
+            switch(deployment_level) {
+                case "DEDICATED":
+                    return "This model is on GPU and ready to serve. It is guarenteed to be running until the scheduled end time.";
+                case "HOT":
+                    return "This model is on GPU and ready to serve. It may be evicted depending on model traffic after a minimum amount of time.";
+                case "WARM":
+                    return "This model is cached on CPU and will be quickly loaded into GPU when requested assuming it can be accomodated.";
+                case "SCHEDULED":
+                    return "This model is scheduled to be a dedicated deployment for a duration specified by the deployment schedule.";
+                case "COLD":
+                    return "This model is downloaded and ready to be deployed when requested assuming it can be accomodated.";
             }
         }
 
@@ -265,8 +379,16 @@
                                         // Add calendar link if available
                                         const calendarLink = response.calendar_id ? 
                                             `<a href="https://calendar.google.com/calendar/embed?src=${encodeURIComponent(response.calendar_id)}" target="_blank" style="display: block; margin-bottom: 1rem; text-decoration: none;">View Dedicated Deployment Calendar ↗</a>` : '';
-
-                                        Object.entries(response.deployments).forEach(([key, value]) => {
+                                        // Sort deployments by deployment_level in the desired order
+                                        const deploymentOrder = ["DEDICATED", "HOT", "WARM", "SCHEDULED", "COLD"];
+                                        Object.entries(response.deployments)
+                                            .sort(([, a], [, b]) => {
+                                                const aLevel = deploymentOrder.indexOf(a.deployment_level);
+                                                const bLevel = deploymentOrder.indexOf(b.deployment_level);
+                                                // If not found, put at the end
+                                                return (aLevel === -1 ? deploymentOrder.length : aLevel) - (bLevel === -1 ? deploymentOrder.length : bLevel);
+                                            })
+                                            .forEach(([key, value]) => {
                                             var headingId = 'heading' + (index + 1);
                                             var collapseId = 'collapse' + (index + 1);
 
@@ -275,35 +397,36 @@
                                             const application_state = value.application_state;
                                             const schedule = value.schedule;
 
-                                            let jsonObject = JSON.parse(configJsonString);
                                             let prettyPrintedJson = '';
-                                            if (Object.keys(jsonObject).length > 0) {
+                                            if (configJsonString) {
+                                                let jsonObject = JSON.parse(configJsonString);
                                                 prettyPrintedJson = JSON.stringify(jsonObject, null, 4);
-                                                prettyPrintedJson = prettyPrintedJson.replace(/"([^"]+)":/g, '"<b>$1</b>":');
+                                                prettyPrintedJson = prettyPrintedJson.replace(/"([^"]+)":/g, '"<b>$1</b>":');  
+                                               
                                             }
-                                            let huggingFaceLink = `<a href="http://huggingface.co/${value.title}" target="_blank">HuggingFace Model Repository ↗</a>`;
+                                            let huggingFaceLink = `<a href="http://huggingface.co/${value.repo_id}" target="_blank">HuggingFace Model Repository ↗</a>`;
 
                                             const deploymentLevelColor = getDeploymentLevelColor(deployment_level);
-                                            const deploymentLevelBadge = `<span style="background-color: ${deploymentLevelColor}; color: white; padding: 2px 8px; border-radius: 4px; margin-right: 8px;">${deployment_level}</span>`;
+                                            const deploymentLevelBadge = `<span style="background-color: ${deploymentLevelColor};" class="badge" data-tooltip="${getDeploymentLevelToolTip(deployment_level)}">${deployment_level}</span>`;
 
                                             // Only show application state if it exists
                                             let applicationStateBadge = '';
                                             if (application_state !== undefined && application_state !== null) {
                                                 const applicationStateColor = getApplicationStateColor(application_state);
-                                                applicationStateBadge = `<span style="background-color: ${applicationStateColor}; color: white; padding: 2px 8px; border-radius: 4px; margin-right: 8px;">${application_state}</span>`;
+                                                applicationStateBadge = `<span style="background-color: ${applicationStateColor};" class="badge">${application_state}</span>`;
                                             }
                                             
                                             // Create schedule info with data attribute for updates
                                             const scheduleInfo = schedule ? 
-                                                `<span class="schedule-info" data-schedule='${JSON.stringify(schedule)}' style="background-color: #f8f9fa; color: #495057; padding: 2px 8px; border-radius: 4px; margin-left: 8px; border: 1px solid #dee2e6;">${formatSchedule(schedule)}</span>` : '';
+                                                `<span class="schedule-info" data-schedule='${JSON.stringify(schedule)}'>${formatSchedule(schedule)}</span>` : '';
 
                                             infoString += `<div class="accordion-item">
                                                     <h2 class="accordion-header" id="${headingId}">
                                                         <button class="accordion-button custom-accordion-header collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}" style="display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left;">
-                                                            <div style="display: flex; align-items: center; flex: 1;">
-                                                                ${deploymentLevelBadge}${applicationStateBadge}<span style="font-weight: 600;">${value.title}</span>
+                                                            <div style="display: flex; align-items: center; flex: 1; flex-wrap: wrap; gap: 8px;">
+                                                                ${deploymentLevelBadge}${applicationStateBadge}<span style="font-weight: 600;">${value.repo_id}</span>
                                                             </div>
-                                                            <div style="margin-left: auto;">
+                                                            <div style="margin-left: auto; display: flex; align-items: center;">
                                                                 ${scheduleInfo}
                                                             </div>
                                                         </button>
@@ -366,10 +489,14 @@ Status
 .. card::
     :shadow: none
     
-    The library can be used to run local models without requiring a key. However, running experiments on remote models requires a free server API key. To obtain a key, register for an `NDIF account <https://login.ndif.us>`_ which allows you to manage and generate keys.
+    NNsight can be used to run local models without requiring a key. However, running experiments on NDIF remote models requires a free API key. To obtain a key, register for an `NDIF account <https://login.ndif.us>`_ which allows you to manage and generate keys.
     For information on API key configuration and remote system limits, please refer to our `Remote Execution Tutorial <https://nnsight.net/notebooks/features/remote_execution/>`_.
 
-    We currently have engineers on call Monday to Friday from 9 AM to 5 PM ET to assist with any connectivity issues for our remote models. Please reach out to us on `Discord <https://discord.com/invite/6uFJmCSwW7>`_ or at mailto:info@ndif.us.
+    Below, models are shown in various states of deployment, and their deployment level is shown in the leftmost badge (hover for more information on their meaning). Models not displayed here are in the lowest state of deployment, which means they are not even downloaded. 
+    Upon request they may be able to be downloaded assuming there is space to accommodate and they don't require non-Hugging Face code and are not gated. 
+    If there is a model that you believe should be accessible, please message the team on Discord or email.
+
+    We currently have engineers on call Monday to Friday from 9 AM to 5 PM ET to assist with any connectivity issues for our remote models. Please reach out to us on `Discord <https://discord.com/invite/6uFJmCSwW7>`_ or via email at `info@ndif.us <mailto:info@ndif.us>`_.
 
 .. raw:: html
 
