@@ -57,8 +57,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="" />
-<link href="../../../../_static/css/custom.css?v=1749835904" rel="stylesheet" type="text/css" />
-<link href="../../../../_static/css/home.css?v=1749835904" rel="stylesheet" type="text/css" />
+<link href="../../../../_static/css/custom.css?v=1749863180" rel="stylesheet" type="text/css" />
+<link href="../../../../_static/css/home.css?v=1749863180" rel="stylesheet" type="text/css" />
 
   </head>
   
@@ -610,6 +610,7 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_source</span> <span class="o">=</span> <span class="kc">None</span>
 
+        <span class="c1">#TODO interleaver by reference</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_interleaver</span> <span class="o">=</span> <span class="n">interleaver</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_default_mediators</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
@@ -874,8 +875,11 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
 
             <span class="k">def</span><span class="w"> </span><span class="nf">wrap</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+                <span class="n">bound_obj</span> <span class="o">=</span> <span class="n">fn</span><span class="o">.</span><span class="vm">__self__</span> <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">ismethod</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span> <span class="ow">and</span> <span class="n">fn</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">!=</span> <span class="s2">&quot;forward&quot;</span> <span class="k">else</span> <span class="kc">None</span>
+
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">interleaving</span><span class="p">:</span>
-                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interleaver</span><span class="o">.</span><span class="n">wrap_operation</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interleaver</span><span class="o">.</span><span class="n">wrap_operation</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">bound_obj</span><span class="o">=</span><span class="n">bound_obj</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="k">return</span> <span class="n">fn</span>
 
@@ -1394,31 +1398,7 @@
         <span class="k">if</span> <span class="n">key</span> <span class="o">!=</span> <span class="s2">&quot;_module&quot;</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_add_envoy</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-            
-    <span class="c1">#### Serialization ####</span>
-    
-    <span class="k">def</span><span class="w"> </span><span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;module&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_module</span><span class="p">,</span>
-            <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span>
-            <span class="s2">&quot;alias&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_alias</span><span class="p">,</span>
-            <span class="s2">&quot;children&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_children</span><span class="p">,</span>
-        <span class="p">}</span>
-    
-    <span class="k">def</span><span class="w"> </span><span class="nf">__setstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
-        
-        <span class="bp">self</span><span class="o">.</span><span class="n">_module</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;module&quot;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_alias</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;alias&quot;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_children</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;children&quot;</span><span class="p">]</span>
-        
-        <span class="bp">self</span><span class="o">.</span><span class="n">_source</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_interleaver</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_default_mediators</span> <span class="o">=</span> <span class="p">[]</span>
-        
-        <span class="bp">self</span><span class="o">.</span><span class="n">_fake_inputs</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">_empty</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_fake_output</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">_empty</span></div>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span></div>
 
 
 
@@ -1456,7 +1436,7 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_interleaver</span> <span class="o">=</span> <span class="n">interleaver</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_source</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_source</span><span class="p">:</span><span class="n">EnvoySource</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -1599,18 +1579,23 @@
 <span class="sd">            An EnvoySource object containing the operation&#39;s source code and nested operations</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="n">fn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interleaver</span><span class="o">.</span><span class="n">current</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">.fn&quot;</span><span class="p">)</span>
 
-        <span class="k">def</span><span class="w"> </span><span class="nf">wrap</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interleaver</span><span class="o">.</span><span class="n">wrap_operation</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interleaver</span><span class="o">.</span><span class="n">current</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">.fn&quot;</span><span class="p">)</span>
 
-        <span class="n">source</span><span class="p">,</span> <span class="n">line_numbers</span><span class="p">,</span> <span class="n">fn</span> <span class="o">=</span> <span class="n">inject</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrap</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">def</span><span class="w"> </span><span class="nf">wrap</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_source</span> <span class="o">=</span> <span class="n">EnvoySource</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">line_numbers</span><span class="p">,</span> <span class="n">interleaver</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_interleaver</span>
-        <span class="p">)</span>
+                <span class="n">bound_obj</span> <span class="o">=</span> <span class="n">fn</span><span class="o">.</span><span class="vm">__self__</span> <span class="k">if</span> <span class="n">fn</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">!=</span> <span class="s2">&quot;forward&quot;</span> <span class="ow">and</span> <span class="n">inspect</span><span class="o">.</span><span class="n">ismethod</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_interleaver</span><span class="o">.</span><span class="n">current</span><span class="o">.</span><span class="n">swap</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">.fn&quot;</span><span class="p">,</span> <span class="n">fn</span><span class="p">)</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interleaver</span><span class="o">.</span><span class="n">wrap_operation</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">bound_obj</span><span class="o">=</span><span class="n">bound_obj</span><span class="p">)</span>
+
+            <span class="n">source</span><span class="p">,</span> <span class="n">line_numbers</span><span class="p">,</span> <span class="n">fn</span> <span class="o">=</span> <span class="n">inject</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">wrap</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_source</span> <span class="o">=</span> <span class="n">EnvoySource</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">line_numbers</span><span class="p">,</span> <span class="n">interleaver</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_interleaver</span>
+            <span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_interleaver</span><span class="o">.</span><span class="n">current</span><span class="o">.</span><span class="n">swap</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">.fn&quot;</span><span class="p">,</span> <span class="n">fn</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source</span>
 
@@ -1633,6 +1618,9 @@
 <span class="sd">            interleaver: The interleaver to use for managing execution flow</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_interleaver</span> <span class="o">=</span> <span class="n">interleaver</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_source</span><span class="o">.</span><span class="n">_set_interleaver</span><span class="p">(</span><span class="n">interleaver</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -1676,7 +1664,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">source</span> <span class="o">=</span> <span class="n">source</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">line_numbers</span> <span class="o">=</span> <span class="n">line_numbers</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">operations</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">operations</span><span class="p">:</span><span class="n">List</span><span class="p">[</span><span class="n">OperationEnvoy</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
 
         <span class="k">for</span> <span class="n">_name</span><span class="p">,</span> <span class="n">line_number</span> <span class="ow">in</span> <span class="n">line_numbers</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="n">operation</span> <span class="o">=</span> <span class="n">OperationEnvoy</span><span class="p">(</span>

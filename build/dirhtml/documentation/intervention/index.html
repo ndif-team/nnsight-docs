@@ -60,8 +60,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="" />
-<link href="../../_static/css/custom.css?v=1749835904" rel="stylesheet" type="text/css" />
-<link href="../../_static/css/home.css?v=1749835904" rel="stylesheet" type="text/css" />
+<link href="../../_static/css/custom.css?v=1749863180" rel="stylesheet" type="text/css" />
+<link href="../../_static/css/home.css?v=1749863180" rel="stylesheet" type="text/css" />
 
   </head>
   
@@ -1300,13 +1300,14 @@ modification of intermediate values.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="nnsight.intervention.interleaver.Interleaver.wrap_operation">
-<span class="sig-name descname"><span class="pre">wrap_operation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nnsight/intervention/interleaver/#Interleaver.wrap_operation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nnsight.intervention.interleaver.Interleaver.wrap_operation" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">wrap_operation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bound_obj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nnsight/intervention/interleaver/#Interleaver.wrap_operation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nnsight.intervention.interleaver.Interleaver.wrap_operation" title="Link to this definition">#</a></dt>
 <dd><p>Wrap an operation to intercept inputs and outputs for intervention.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>fn</strong> – The function to wrap</p></li>
 <li><p><strong>name</strong> – The name of the operation</p></li>
+<li><p><strong>bound_obj</strong> – The object fn is bound to if it is a method</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>

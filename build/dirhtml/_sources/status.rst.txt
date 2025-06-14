@@ -203,7 +203,7 @@
         let success_color = "#2bab38"  // Green for RUNNING
         let warning_color = "#a85100"  // Yellow for other states
 
-        let dedicated_color = "#31945d"
+        let dedicated_color = "#2bab38"
         let hot_color = "#2bab38"
         let warm_color = "#319480"
         let scheduled_color = "#5baec9"
@@ -287,7 +287,7 @@
                 return formatTimeRemaining(schedule.end_time);
             }
             if (now < start) {
-                const startStr = start.toLocaleString();
+                const startStr = start.toLocaleString(undefined, {timeZoneName: 'short'});
                 const duration = Math.round((end - start) / (1000 * 60 * 60));
                 return `Starts ${startStr} (${duration}h duration)`;
             }

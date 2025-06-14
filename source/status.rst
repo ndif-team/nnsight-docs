@@ -287,7 +287,7 @@
                 return formatTimeRemaining(schedule.end_time);
             }
             if (now < start) {
-                const startStr = start.toLocaleString();
+                const startStr = start.toLocaleString(undefined, {timeZoneName: 'short'});
                 const duration = Math.round((end - start) / (1000 * 60 * 60));
                 return `Starts ${startStr} (${duration}h duration)`;
             }
