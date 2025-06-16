@@ -28,7 +28,7 @@
         .sd-badge[data-tooltip] {
             position: relative;
             cursor: help;
-            z-index: 5;
+            z-index: 3;
         }
 
         .sd-badge[data-tooltip]:hover::after {
@@ -214,29 +214,6 @@
             return `${hours}h ${minutes}m remaining`;
         }
 
-        function formatSchedule(schedule) {
-            if (!schedule) return "No schedule";
-            
-            const now = new Date();
-            const start = new Date(schedule.start_time);
-            const end = new Date(schedule.end_time);
-            
-            if (now > end) return "Ended";
-            if (now >= start && now <= end) {
-                return formatTimeRemaining(schedule.end_time);
-            }
-            if (now < start) {
-                const startStr = start.toLocaleString(undefined, {
-                    timeZoneName: 'short',
-                    hour: 'numeric',
-                    minute: 'numeric',
-                    hour12: true
-                });
-                const duration = Math.round((end - start) / (1000 * 60 * 60));
-                return `Starts ${startStr} (${duration}h duration)`;
-            }
-        }
-
         function update(message, cls) {
             document.querySelectorAll('div.sd-card-body.status-container').forEach(el => {
                 el.classList.remove(...Array.from(el.classList).filter(cls => cls.startsWith('sd-bg')));
@@ -306,18 +283,6 @@
             return getBadge(text, color, bg=true, tooltip=tooltip, cls="electrolize")
         }
 
-        function getDedicatedBadge(dedicated){
-
-            if (!dedicated){
-                return "";
-            }
-
-            let content = `<i class="fa-solid fa-thumbtack"></i>  Dedicated`
-            let tooltip = "This model is guaranteed to be running until the scheduled end time."
-
-            return getBadge(content, "info", bg=true, tooltip=tooltip, cls="electrolize")
-        }
-
         function getApplicationStateBadge(application_state){
 
             if (application_state === undefined || application_state === null) {
@@ -353,27 +318,49 @@
             return getBadge(text, color, bg=true, tooltip=undefined, cls="electrolize")  
         }
         
-        function getScheduleBadges(schedule, deployment_level) {
+        function getScheduleBadges(schedule) {
 
             if (schedule === undefined || schedule === null) {
                 return "";
             }
 
-            let info_badge = getBadge(formatSchedule(schedule), "muted", bg=false)
+            let now = new Date();
+            let start = undefined;
+            let end = undefined;
 
-            let schedule_badge = "";
-
-            if (deployment_level !== "HOT") {
+            if (schedule.start_time) {
+                start = new Date(schedule.start_time);
+            }
+            if (schedule.end_time) {
+                end = new Date(schedule.end_time);
+            }
             
+            if (!end || now > end) return "";
 
-                let tooltip = "This model is scheduled to be a dedicated deployment for a duration specified by the deployment schedule.";
-                let color = "info";
-                let text = `<i class="fa-solid fa-clock"></i>  Scheduled`
+            if (start && now < start) {
+                const startStr = start.toLocaleString(undefined, {
+                    timeZoneName: 'short',
+                    hour: 'numeric',
+                    minute: 'numeric',
+                    hour12: true
+                });
+                const duration = Math.round((end - start) / (1000 * 60 * 60));
+                let text = `Starts ${startStr} (${duration}h duration)`
+                let tooltip = "This model is scheduled to be deployed at a future time."
+                let info_badge = getBadge(text, "muted", bg=false)
+                let scheduled_badge = getBadge(`<i class="fa-solid fa-clock"></i>  Scheduled`, "info", bg=true, tooltip=tooltip, cls="electrolize")
+                return `${info_badge} ${scheduled_badge}`
+            }
+            else {
 
-                schedule_badge = getBadge(text, color, bg=true, tooltip=tooltip, cls="electrolize")
+                let text = formatTimeRemaining(schedule.end_time);
+                let tooltip = "This model wont be evicted for the specified duration."
+                let info_badge = getBadge(text, "muted", bg=false)
+                let scheduled_badge = getBadge(`<i class="fa-solid fa-thumbtack"></i>  Pinned`, "info", bg=true, tooltip=tooltip, cls="electrolize")
+
+                return `${info_badge} ${scheduled_badge}`
             }
 
-            return `${info_badge}${schedule_badge}`
         }
 
         function getModelClassBadge(class_name) {
@@ -497,8 +484,7 @@
                                                     </div>
                                                     <div class="nn-repo-id electrolize">${deployment.repo_id}</div>
                                                     <div class="nn-badges">
-                                                        ${getScheduleBadges(deployment.schedule, deployment.deployment_level)}
-                                                        ${getDedicatedBadge(deployment.dedicated)}
+                                                        ${getScheduleBadges(deployment.schedule)}
                                                         ${getModelClassBadge(class_name)}
                                                         ${getDeploymentLevelBadge(deployment.deployment_level)}
                                                         ${getApplicationStateBadge(deployment.application_state)}
