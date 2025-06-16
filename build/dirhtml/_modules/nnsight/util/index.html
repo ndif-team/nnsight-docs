@@ -57,8 +57,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="" />
-<link href="../../../_static/css/custom.css?v=1749863180" rel="stylesheet" type="text/css" />
-<link href="../../../_static/css/home.css?v=1749863180" rel="stylesheet" type="text/css" />
+<link href="../../../_static/css/custom.css?v=1750040353" rel="stylesheet" type="text/css" />
+<link href="../../../_static/css/home.css?v=1750040353" rel="stylesheet" type="text/css" />
 
   </head>
   
@@ -603,60 +603,6 @@
     <span class="k">return</span> <span class="n">data</span></div>
 
 
-
-<div class="viewcode-block" id="applyn">
-<a class="viewcode-back" href="../../../sourcelatex/documentation/util/#nnsight.util.applyn">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">applyn</span><span class="p">(</span>
-    <span class="n">data</span><span class="p">:</span> <span class="n">C</span><span class="p">,</span> <span class="n">fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">T</span><span class="p">],</span> <span class="n">Any</span><span class="p">],</span> <span class="bp">cls</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="n">T</span><span class="p">],</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">C</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Applies some function to all members of a collection of a give type (or types)</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        data (Any): Collection of data to apply function to.</span>
-<span class="sd">        fn (Callable): Function to apply.</span>
-<span class="sd">        cls (type): Type or Types to apply function to.</span>
-<span class="sd">        inplace (bool): If to apply the fn inplace. (For lists and dicts)</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Any: Same kind of collection as data, after then fn has been applied to members of given type.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">cls</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="o">*</span><span class="n">data</span><span class="p">)</span>
-
-    <span class="n">data_type</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-
-    <span class="k">if</span> <span class="n">data_type</span> <span class="o">==</span> <span class="nb">list</span><span class="p">:</span>
-        <span class="c1"># if inplace:</span>
-        <span class="c1">#     for idx, _data in enumerate(data):</span>
-        <span class="c1">#         data[idx] = apply(_data, fn, cls, inplace=inplace)</span>
-        <span class="c1">#     return data</span>
-        
-        <span class="k">return</span> <span class="p">[</span><span class="n">applyn</span><span class="p">([</span><span class="n">_data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">_data</span> <span class="ow">in</span> <span class="n">data</span><span class="p">],</span> <span class="n">fn</span><span class="p">,</span> <span class="bp">cls</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]))]</span>
-
-    <span class="k">elif</span> <span class="n">data_type</span> <span class="o">==</span> <span class="nb">tuple</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">tuple</span><span class="p">([</span><span class="n">applyn</span><span class="p">([</span><span class="n">_data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">_data</span> <span class="ow">in</span> <span class="n">data</span><span class="p">],</span> <span class="n">fn</span><span class="p">,</span> <span class="bp">cls</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]))])</span>
-
-    <span class="k">elif</span> <span class="n">data_type</span> <span class="o">==</span> <span class="nb">dict</span><span class="p">:</span>
-        <span class="c1"># if inplace:</span>
-        <span class="c1">#     for key, value in data.items():</span>
-        <span class="c1">#         data[key] = apply(value, fn, cls, inplace=inplace)</span>
-        <span class="c1">#     return data</span>
-        <span class="k">return</span> <span class="p">{</span>
-            <span class="n">key</span><span class="p">:</span> <span class="n">applyn</span><span class="p">([</span><span class="n">_data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">_data</span> <span class="ow">in</span> <span class="n">data</span><span class="p">],</span> <span class="n">fn</span><span class="p">,</span> <span class="bp">cls</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
-        <span class="p">}</span>
-
-    <span class="c1"># elif data_type == slice:</span>
-    <span class="c1">#     return slice(</span>
-    <span class="c1">#         apply(data.start, fn, cls, inplace=inplace),</span>
-    <span class="c1">#         apply(data.stop, fn, cls, inplace=inplace),</span>
-    <span class="c1">#         apply(data.step, fn, cls, inplace=inplace),</span>
-    <span class="c1">#     )</span>
-
-    <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
-
-
 <div class="viewcode-block" id="fetch_attr">
 <a class="viewcode-back" href="../../../sourcelatex/documentation/util/#nnsight.util.fetch_attr">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">fetch_attr</span><span class="p">(</span><span class="nb">object</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
@@ -708,33 +654,17 @@
 <span class="sd">        parent (Any): Module or class to replace attribute.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">replacement</span><span class="p">:</span> <span class="n">Any</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">as_dict</span><span class="p">:</span><span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">replacement</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="n">parent</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">replacement</span> <span class="o">=</span> <span class="n">replacement</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">key</span> <span class="o">=</span> <span class="n">key</span>
-        
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">as_dict</span> <span class="o">=</span> <span class="n">as_dict</span>
-        
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">as_dict</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">orig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">orig</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">orig</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Patch.patch">
 <a class="viewcode-back" href="../../../sourcelatex/documentation/util/#nnsight.util.Patch.patch">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">patch</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Carries out the replacement of an object in a module/class.&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">replacement</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">as_dict</span><span class="p">:</span>
-                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">]</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="nb">delattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">as_dict</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">replacement</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">replacement</span><span class="p">)</span></div>
+        <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">replacement</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="Patch.restore">
@@ -742,10 +672,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">restore</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Carries out the restoration of the original object on the objects module/class.&quot;&quot;&quot;</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">as_dict</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">orig</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">orig</span><span class="p">)</span></div>
+        <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">orig</span><span class="p">)</span></div>
 </div>
 
 
@@ -783,37 +710,68 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            Patcher: Patcher</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">entered</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">entered</span> <span class="o">=</span> <span class="kc">True</span>
-            
-            <span class="k">for</span> <span class="n">patch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">patches</span><span class="p">:</span>
-                <span class="n">patch</span><span class="o">.</span><span class="n">patch</span><span class="p">()</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">entered</span> <span class="o">=</span> <span class="kc">True</span>
+        
+        <span class="k">for</span> <span class="n">patch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">patches</span><span class="p">:</span>
+            <span class="n">patch</span><span class="o">.</span><span class="n">patch</span><span class="p">()</span>
 
         <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_val</span><span class="p">,</span> <span class="n">exc_tb</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Calls `.restore()` on all patches.&quot;&quot;&quot;</span>
-        
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">entered</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">entered</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="k">for</span> <span class="n">patch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">patches</span><span class="p">:</span>
-                <span class="n">patch</span><span class="o">.</span><span class="n">restore</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entered</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">for</span> <span class="n">patch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">patches</span><span class="p">:</span>
+            <span class="n">patch</span><span class="o">.</span><span class="n">restore</span><span class="p">()</span></div>
 
 
 
 <div class="viewcode-block" id="WrapperModule">
 <a class="viewcode-back" href="../../../sourcelatex/documentation/util/#nnsight.util.WrapperModule">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">WrapperModule</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
-    
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simple torch module which passes it&#39;s input through. Useful for hooking.</span>
+<span class="sd">    If there is only one argument, returns the first element.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
 <div class="viewcode-block" id="WrapperModule.forward">
 <a class="viewcode-back" href="../../../sourcelatex/documentation/util/#nnsight.util.WrapperModule.forward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        
-        <span class="k">return</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span></div>
+            <span class="n">args</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">args</span></div>
 </div>
+
+
+<div class="viewcode-block" id="NNsightError">
+<a class="viewcode-back" href="../../../sourcelatex/documentation/util/#nnsight.util.NNsightError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">NNsightError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;NNsight Execption class for raising error during execution.</span>
+<span class="sd">    </span>
+<span class="sd">    Attributes:</span>
+<span class="sd">        - message (str): error message.</span>
+<span class="sd">        - node_id (int): node id.</span>
+<span class="sd">        - traceback_content (Optional[str]): traceback of the original exception being raised.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">node_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">traceback_content</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="n">message</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">node_id</span> <span class="o">=</span> <span class="n">node_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">traceback_content</span> <span class="o">=</span> <span class="n">traceback_content</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="p">)</span>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_render_traceback_</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This function allows custom rendering of traceback in IPython</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            - List of string lines.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">traceback_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">traceback_content</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">traceback_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">traceback_list</span></div>
 
 </pre></div>
 

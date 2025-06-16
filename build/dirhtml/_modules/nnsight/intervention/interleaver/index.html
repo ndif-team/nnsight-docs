@@ -57,8 +57,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="" />
-<link href="../../../../_static/css/custom.css?v=1749863180" rel="stylesheet" type="text/css" />
-<link href="../../../../_static/css/home.css?v=1749863180" rel="stylesheet" type="text/css" />
+<link href="../../../../_static/css/custom.css?v=1750040353" rel="stylesheet" type="text/css" />
+<link href="../../../../_static/css/home.css?v=1750040353" rel="stylesheet" type="text/css" />
 
   </head>
   
@@ -538,971 +538,138 @@
   <h1>Source code for nnsight.intervention.interleaver</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">ctypes</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">defaultdict</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">wraps</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">queue</span><span class="w"> </span><span class="kn">import</span> <span class="n">Queue</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">threading</span><span class="w"> </span><span class="kn">import</span> <span class="n">Thread</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">AbstractContextManager</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">torch.utils.hooks</span><span class="w"> </span><span class="kn">import</span> <span class="n">RemovableHandle</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">..util</span><span class="w"> </span><span class="kn">import</span> <span class="n">Patch</span><span class="p">,</span> <span class="n">Patcher</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.batching</span><span class="w"> </span><span class="kn">import</span> <span class="n">Batcher</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.tracing.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">WithBlockNotFoundError</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.tracing.util</span><span class="w"> </span><span class="kn">import</span> <span class="n">wrap_exception</span>
-
-<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">.tracing.tracer</span><span class="w"> </span><span class="kn">import</span> <span class="n">Cache</span><span class="p">,</span> <span class="n">Tracer</span><span class="p">,</span> <span class="n">InterleavingTracer</span>
-    
-
-
-<div class="viewcode-block" id="Events">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Events">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">Events</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enum for different types of events in the interleaving process.&quot;&quot;&quot;</span>
-
-    <span class="n">VALUE</span> <span class="o">=</span> <span class="s2">&quot;value&quot;</span>  <span class="c1"># Request for a value</span>
-    <span class="n">SWAP</span> <span class="o">=</span> <span class="s2">&quot;swap&quot;</span>  <span class="c1"># Request for a swap</span>
-    <span class="n">END</span> <span class="o">=</span> <span class="s2">&quot;end&quot;</span>  <span class="c1"># Signal to end the execution</span>
-    <span class="n">EXCEPTION</span> <span class="o">=</span> <span class="s2">&quot;exception&quot;</span>  <span class="c1"># Signal that an exception occurred</span>
-    <span class="n">REGISTER</span> <span class="o">=</span> <span class="s2">&quot;register&quot;</span>  <span class="c1"># Signal that a mediator has been registered</span>
-    <span class="n">SKIP</span> <span class="o">=</span> <span class="s2">&quot;skip&quot;</span>  <span class="c1"># Signal that an operation should be skipped</span>
-    <span class="n">CONTINUE</span> <span class="o">=</span> <span class="s2">&quot;continue&quot;</span>  <span class="c1"># Signal that an operation should continue</span></div>
-
-
-
-<div class="viewcode-block" id="Cancelation">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Cancelation">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">Cancelation</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when a request is canceled.&quot;&quot;&quot;</span>
-
-    <span class="k">pass</span></div>
-
-
-
-<div class="viewcode-block" id="EarlyStopException">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.EarlyStopException">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">EarlyStopException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Exception raised to stop the execution of the model.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">pass</span></div>
-
-
-<div class="viewcode-block" id="SkipException">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.SkipException">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">SkipException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Exception raised to skip the execution of the model.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span></div>
-
-
+<span class="kn">from</span><span class="w"> </span><span class="nn">..</span><span class="w"> </span><span class="kn">import</span> <span class="n">util</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">InterventionGraph</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.protocols</span><span class="w"> </span><span class="kn">import</span> <span class="n">InterventionProtocol</span>
 
 <div class="viewcode-block" id="Interleaver">
 <a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Interleaver">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">Interleaver</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Manages the interleaving of model execution and interventions.</span>
-
-<span class="sd">    This class coordinates the flow between the model&#39;s forward pass and</span>
-<span class="sd">    user-defined intervention functions, allowing for inspection and</span>
-<span class="sd">    modification of intermediate values.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">invokers</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Mediator</span><span class="p">],</span> <span class="n">tracer</span><span class="p">:</span> <span class="n">InterleavingTracer</span><span class="p">,</span> <span class="n">batcher</span><span class="p">:</span> <span class="n">Batcher</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Initialize an Interleaver with mediators.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            mediators: A list of Mediator objects that define intervention logic</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">invokers</span> <span class="o">=</span> <span class="n">invokers</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">batcher</span> <span class="o">=</span> <span class="n">batcher</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span> <span class="o">=</span> <span class="n">tracer</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">mediators</span> <span class="o">=</span> <span class="p">{}</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">patcher</span> <span class="o">=</span> <span class="kc">None</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">iteration_tracker</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
-        
-        <span class="c1">#TODO legacy?</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">default_all</span> <span class="o">=</span> <span class="kc">None</span>
-        
-    <span class="k">def</span><span class="w"> </span><span class="nf">iterate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">provider</span><span class="p">:</span><span class="nb">str</span><span class="p">):</span>
-        
-        <span class="n">iteration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iteration_tracker</span><span class="p">[</span><span class="n">provider</span><span class="p">]</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">iteration_tracker</span><span class="p">[</span><span class="n">provider</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
-
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">provider</span><span class="si">}</span><span class="s2">.i</span><span class="si">{</span><span class="n">iteration</span><span class="si">}</span><span class="s2">&quot;</span>
-
-
-<div class="viewcode-block" id="Interleaver.wrap">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Interleaver.wrap">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">wrap</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Wrap a function to intercept inputs and outputs for intervention.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            fn: The function to wrap</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            A wrapped version of the function</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="nd">@wraps</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span>
-        <span class="k">def</span><span class="w"> </span><span class="nf">inner</span><span class="p">(</span><span class="n">module</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-
-            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="s2">&quot;__path__&quot;</span><span class="p">):</span>
-                <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-
-            <span class="n">provider</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">__path__</span>
-            
-            <span class="c1"># Call our hook before the original __call__</span>
-            
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">inputs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">iterate</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">provider</span><span class="si">}</span><span class="s2">.input&quot;</span><span class="p">),</span> <span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">))</span>
-            <span class="k">except</span> <span class="n">SkipException</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="n">value</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">value</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="o">=</span> <span class="n">inputs</span>
-                <span class="n">value</span> <span class="o">=</span> <span class="n">fn</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-            
-            <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">iterate</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">provider</span><span class="si">}</span><span class="s2">.output&quot;</span><span class="p">),</span> <span class="n">value</span><span class="p">)</span>
-    
-            <span class="k">return</span> <span class="n">value</span>
-
-        <span class="k">return</span> <span class="n">inner</span></div>
-
-
-<div class="viewcode-block" id="Interleaver.wrap_operation">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Interleaver.wrap_operation">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">wrap_operation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">bound_obj</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Wrap an operation to intercept inputs and outputs for intervention.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            fn: The function to wrap</span>
-<span class="sd">            name: The name of the operation</span>
-<span class="sd">            bound_obj: The object fn is bound to if it is a method</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            A wrapped version of the function</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="nd">@wraps</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span>
-        <span class="k">def</span><span class="w"> </span><span class="nf">inner</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-
-            <span class="k">nonlocal</span> <span class="n">fn</span>
-
-            <span class="n">fn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.fn&quot;</span><span class="p">,</span> <span class="n">fn</span><span class="p">)</span>
-
-            <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.input&quot;</span><span class="p">,</span> <span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">))</span>
-
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">inspect</span><span class="o">.</span><span class="n">ismethod</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span> <span class="ow">and</span> <span class="n">bound_obj</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">value</span> <span class="o">=</span> <span class="n">fn</span><span class="p">(</span><span class="n">bound_obj</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">value</span> <span class="o">=</span> <span class="n">fn</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-
-            <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.output&quot;</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-
-            <span class="k">return</span> <span class="n">value</span>
-
-        <span class="k">return</span> <span class="n">inner</span></div>
-
-
-<div class="viewcode-block" id="Interleaver.wrap_grad">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Interleaver.wrap_grad">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">wrap_grad</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Create a hook for gradient intervention.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            A function that can be used to intercept gradients</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="k">def</span><span class="w"> </span><span class="nf">wrap</span><span class="p">(</span><span class="n">tensor</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
-
-            <span class="c1"># Only wrap the tensor once</span>
-            <span class="k">if</span> <span class="n">tensor</span><span class="o">.</span><span class="n">_backward_hooks</span><span class="p">:</span>
-                <span class="k">return</span>
-
-            <span class="c1"># We are providing the grad of the tensor</span>
-            <span class="n">provider</span> <span class="o">=</span> <span class="nb">id</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
-
-            <span class="c1"># Well need to remove the hook</span>
-            <span class="n">hook</span> <span class="o">=</span> <span class="kc">None</span>
-
-            <span class="c1"># On backwards for this tensor</span>
-            <span class="k">def</span><span class="w"> </span><span class="nf">inner</span><span class="p">(</span><span class="n">grad</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
-
-                <span class="n">hook</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
-                <span class="c1"># Inject the grad value</span>
-                <span class="c1"># Possibly editing it in the process</span>
-                <span class="n">grad</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">provider</span><span class="si">}</span><span class="s2">.grad&quot;</span><span class="p">,</span> <span class="n">grad</span><span class="p">)</span>
-
-                <span class="k">return</span> <span class="n">grad</span>
-
-            <span class="c1"># Register the hook</span>
-            <span class="n">hook</span> <span class="o">=</span> <span class="n">tensor</span><span class="o">.</span><span class="n">register_hook</span><span class="p">(</span><span class="n">inner</span><span class="p">)</span>
-
-        <span class="k">def</span><span class="w"> </span><span class="nf">getter</span><span class="p">(</span><span class="n">tensor</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
-
-            <span class="n">wrap</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
-
-            <span class="n">requester</span> <span class="o">=</span> <span class="nb">id</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
-
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">current</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">requester</span><span class="si">}</span><span class="s2">.grad&quot;</span><span class="p">)</span>
-
-        <span class="k">def</span><span class="w"> </span><span class="nf">setter</span><span class="p">(</span><span class="n">tensor</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
-
-            <span class="n">wrap</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
-
-            <span class="n">requester</span> <span class="o">=</span> <span class="nb">id</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
-
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">current</span><span class="o">.</span><span class="n">swap</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">requester</span><span class="si">}</span><span class="s2">.grad&quot;</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="nb">property</span><span class="p">(</span><span class="n">getter</span><span class="p">,</span> <span class="n">setter</span><span class="p">)</span></div>
-
-
-<div class="viewcode-block" id="Interleaver.wrap_backward">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Interleaver.wrap_backward">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">wrap_backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Wrap the backward method to intercept backpropagation.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            A wrapped version of the backward method</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">.tracing.backwards</span><span class="w"> </span><span class="kn">import</span> <span class="n">BackwardsTracer</span>
-
-        <span class="k">def</span><span class="w"> </span><span class="nf">inner</span><span class="p">(</span><span class="n">tensor</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-
-            <span class="k">try</span><span class="p">:</span>
-
-                <span class="n">tracer</span> <span class="o">=</span> <span class="n">BackwardsTracer</span><span class="p">(</span><span class="n">tensor</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-
-            <span class="k">except</span> <span class="n">WithBlockNotFoundError</span><span class="p">:</span>
-
-                <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="n">tensor</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-
-            <span class="k">return</span> <span class="n">tracer</span>
-
-        <span class="k">return</span> <span class="n">inner</span></div>
-
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Context manager entry point. Replaces torch.nn.Module.__call__ with wrapped version.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            The Interleaver instance</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">patcher</span> <span class="o">=</span> <span class="n">Patcher</span><span class="p">(</span>
-            <span class="p">[</span>
-                <span class="n">Patch</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">wrap</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="o">.</span><span class="fm">__call__</span><span class="p">),</span> <span class="s2">&quot;__call__&quot;</span><span class="p">),</span>
-                <span class="n">Patch</span><span class="p">(</span>
-                    <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">wrap_backward</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="o">.</span><span class="n">backward</span><span class="p">),</span> <span class="s2">&quot;backward&quot;</span>
-                <span class="p">),</span>
-            <span class="p">]</span>
-        <span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">patcher</span><span class="o">.</span><span class="fm">__enter__</span><span class="p">()</span>
-
-        <span class="c1"># torch.Tensor.backward = self.wrap_backward()</span>
-        <span class="k">return</span> <span class="bp">self</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_val</span><span class="p">,</span> <span class="n">exc_tb</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Context manager exit point. Restores original torch.nn.Module.__call__.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            exc_type: Exception type if an exception was raised</span>
-<span class="sd">            exc_val: Exception value if an exception was raised</span>
-<span class="sd">            exc_tb: Exception traceback if an exception was raised</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">patcher</span><span class="o">.</span><span class="fm">__exit__</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Execute a function with interventions.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            fn: The function to execute</span>
-<span class="sd">            *args: Arguments to pass to the function</span>
-<span class="sd">            **kwargs: Keyword arguments to pass to the function</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="k">try</span><span class="p">:</span>
-
-            <span class="k">for</span> <span class="n">invoker</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">invokers</span><span class="p">:</span>
-                <span class="n">invoker</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-
-            <span class="n">fn</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-
-        <span class="k">except</span> <span class="n">EarlyStopException</span><span class="p">:</span>
-            <span class="k">pass</span>
-
-        <span class="c1"># TODO check all mediator events</span>
-
-        <span class="c1"># TODO</span>
-        <span class="c1"># for mediator in self.mediators:</span>
-        <span class="c1">#     if mediator.has_pending_event():</span>
-        <span class="c1">#         requested_event, requester = mediator.get_event()</span>
-        <span class="c1">#         print(requested_event, requester)</span>
-        <span class="c1">#         raise ValueError(f&quot;Execution complete but {requester} was not provided. Did you call an Envoy out of order? Investigate why this module was not called.&quot;)</span>
-
-    <span class="c1">### Provider Methods ###</span>
-
-<div class="viewcode-block" id="Interleaver.handle">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Interleaver.handle">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">handle</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">provider</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Handle a provider&#39;s value, allowing mediators to consume and modify it.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            provider: The identifier of the provider</span>
-<span class="sd">            value: The value being provided</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            The original or modified value</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-                    
-        <span class="n">old</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">batcher</span><span class="o">.</span><span class="n">current_value</span>
-                    
-        <span class="bp">self</span><span class="o">.</span><span class="n">batcher</span><span class="o">.</span><span class="n">current_value</span> <span class="o">=</span> <span class="n">value</span>
-        
-        <span class="k">for</span> <span class="n">mediator</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">invokers</span><span class="p">:</span>
-            
-            <span class="n">mediator</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="n">provider</span><span class="p">)</span>
-            
-        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">batcher</span><span class="o">.</span><span class="n">current_value</span>
-        
-        <span class="bp">self</span><span class="o">.</span><span class="n">batcher</span><span class="o">.</span><span class="n">current_value</span> <span class="o">=</span> <span class="n">old</span>
-            
-        <span class="k">return</span> <span class="n">value</span></div>
-
-
-<div class="viewcode-block" id="Interleaver.cancel">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Interleaver.cancel">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">cancel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Cancel all intervention threads.&quot;&quot;&quot;</span>
-        
-        <span class="k">for</span> <span class="n">mediator</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mediators</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
-            <span class="n">mediator</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">mediators</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">batcher</span> <span class="o">=</span> <span class="kc">None</span></div>
-
-
-    <span class="c1">### Requester Methods ###</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">current</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mediator</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the current mediator.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">mediators</span><span class="p">[</span><span class="n">threading</span><span class="o">.</span><span class="n">current_thread</span><span class="p">()</span><span class="o">.</span><span class="n">name</span><span class="p">]</span></div>
-
-
-
-
-<div class="viewcode-block" id="Mediator">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Mediator">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">Mediator</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Mediates between the model execution and intervention functions.</span>
-
-<span class="sd">    This class handles the communication between the model&#39;s forward pass and</span>
-<span class="sd">    user-defined intervention functions, allowing for inspection and</span>
-<span class="sd">    modification of intermediate values.</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Interleaver</span><span class="p">(</span><span class="n">AbstractContextManager</span><span class="p">):</span>
+<span class="w">    </span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The Interleaver is responsible for executing a function involving a PyTorch model alongside a user&#39;s custom functionality</span>
+<span class="sd">    (represented by an `InterventionGraph`). This is called interleaving.</span>
+<span class="sd">    </span>
+<span class="sd">    The `InterventionGraph` has information about which components (modules) of the model the user&#39;s custom logic will interact with.</span>
+<span class="sd">    As the `Interleaver` is a context, entering it adds the appropriate hooks to these components which act as a bridge between the model&#39;s</span>
+<span class="sd">    original computation graph and the `InterventionGraph`. Exiting the `Interleaver` removes these hooks.</span>
+<span class="sd">    </span>
+<span class="sd">    Attributes:</span>
+<span class="sd">        graph (InterventionGraph): The computation graph representing the user&#39;s custom intervention logic.</span>
+<span class="sd">        batch_groups (Optional[List[Tuple[int, int]]]): A batch group is a section of tensor values related to a given intervention. </span>
+<span class="sd">            They are a tuple of (batch_start, batch_length). So if batch group 0 was (0, 4) it means it starts at index 0 and goes until index 3.</span>
+<span class="sd">            The batch index is assumed to be the first dimension of all Tensors.</span>
+<span class="sd">            InterventionProtocol Nodes know which batch group they are a part of in their arguments. That value is the index into the batch_groups.</span>
+<span class="sd">        input_hook (Optional[Callable]). Function to hook onto the inputs of modules for interleaving. Defaults to None and therefore `InterventionProtocol.intervene`.</span>
+<span class="sd">        output_hook (Optional[Callable]). Function to hook onto the outputs of modules for interleaving. Defaults to None and therefore `InterventionProtocol.intervene`.</span>
+<span class="sd">        batch_size (Optional[int]). Total batch size. Used to determine which Tensors need to be narrowed to their batch group.</span>
+<span class="sd">            i.e If a Tensor&#39;s first dimension isn&#39;t batch_size, we dont need to narrow it to convert it for its batch_group.</span>
+<span class="sd">            Defaults to None and therefore the sum of the last batch_group.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">intervention</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span>
-        <span class="n">info</span><span class="p">:</span> <span class="s2">&quot;Tracer.Info&quot;</span><span class="p">,</span>
-        <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">batch_group</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">graph</span><span class="p">:</span> <span class="n">InterventionGraph</span><span class="p">,</span>
+        <span class="n">batch_groups</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">input_hook</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">output_hook</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">batch_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Initialize a Mediator with an intervention function.</span>
 
-<span class="sd">        Args:</span>
-<span class="sd">            intervention: The intervention function</span>
-<span class="sd">            info: Information about the tracing context</span>
-<span class="sd">            name: Optional name for the mediator</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">intervention</span> <span class="o">=</span> <span class="n">intervention</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span> <span class="k">if</span> <span class="n">name</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;Mediator</span><span class="si">{</span><span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">info</span> <span class="o">=</span> <span class="n">info</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">batch_group</span> <span class="o">=</span> <span class="n">batch_group</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">event_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">response_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">graph</span> <span class="o">=</span> <span class="n">graph</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">thread</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">interleaver</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">child</span><span class="p">:</span> <span class="n">Mediator</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">user_cache</span><span class="p">:</span> <span class="s2">&quot;Cache&quot;</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">iteration</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_groups</span> <span class="o">=</span> <span class="p">[]</span> <span class="k">if</span> <span class="n">batch_groups</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">batch_groups</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_frame</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">input_hook</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">input_hook</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="k">lambda</span> <span class="n">activations</span><span class="p">,</span> <span class="n">module_path</span><span class="p">,</span> <span class="n">module</span><span class="p">:</span> <span class="n">InterventionProtocol</span><span class="o">.</span><span class="n">intervene</span><span class="p">(</span>
+                    <span class="n">activations</span><span class="p">,</span> <span class="n">module_path</span><span class="p">,</span> <span class="n">module</span><span class="p">,</span> <span class="s2">&quot;input&quot;</span><span class="p">,</span> <span class="bp">self</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
 
-<div class="viewcode-block" id="Mediator.start">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Mediator.start">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">interleaver</span><span class="p">:</span> <span class="n">Interleaver</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Start the mediator&#39;s intervention thread.</span>
+        <span class="k">if</span> <span class="n">output_hook</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">output_hook</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="k">lambda</span> <span class="n">activations</span><span class="p">,</span> <span class="n">module_path</span><span class="p">,</span> <span class="n">module</span><span class="p">:</span> <span class="n">InterventionProtocol</span><span class="o">.</span><span class="n">intervene</span><span class="p">(</span>
+                    <span class="n">activations</span><span class="p">,</span> <span class="n">module_path</span><span class="p">,</span> <span class="n">module</span><span class="p">,</span> <span class="s2">&quot;output&quot;</span><span class="p">,</span> <span class="bp">self</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
 
-<span class="sd">        Args:</span>
-<span class="sd">            interleaver: The interleaver managing this mediator</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">interleaver</span> <span class="o">=</span> <span class="n">interleaver</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_hook</span> <span class="o">=</span> <span class="n">input_hook</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_hook</span> <span class="o">=</span> <span class="n">output_hook</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">interleaver</span><span class="o">.</span><span class="n">mediators</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">thread</span> <span class="o">=</span> <span class="n">Thread</span><span class="p">(</span>
-            <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">intervention</span><span class="p">,</span>
-            <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">interleaver</span><span class="o">.</span><span class="n">tracer</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">interleaver</span><span class="o">.</span><span class="n">tracer</span><span class="p">),</span>
-            <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">handle</span><span class="p">()</span></div>
-
-
-    <span class="c1">### Provider Methods ###</span>
-
-<div class="viewcode-block" id="Mediator.wait">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Mediator.wait">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">wait</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Wait for the next event to be set in the event queue.&quot;&quot;&quot;</span>
-        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">event_queue</span><span class="o">.</span><span class="n">empty</span><span class="p">()</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">thread</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
-            <span class="c1"># Keep checking until there&#39;s an event in the queue</span>
-            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.001</span><span class="p">)</span>  <span class="c1"># Small sleep to prevent CPU spinning</span></div>
-
-
-<div class="viewcode-block" id="Mediator.cancel">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Mediator.cancel">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">cancel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Cancel the intervention thread and clear caches.&quot;&quot;&quot;</span>
-        <span class="c1"># TODO custom canceled error</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">interleaver</span><span class="o">.</span><span class="n">mediators</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">thread</span> <span class="o">=</span> <span class="kc">None</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_frame</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">handles</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">RemovableHandle</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
         
-        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="kc">None</span>
-
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">thread</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">thread</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
-            <span class="c1"># TODO: cancel inactive threads at the end of the model&#39;s execution</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">response_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">Cancelation</span><span class="p">())</span></div>
-
-
-<div class="viewcode-block" id="Mediator.handle">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Mediator.handle">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">handle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">provider</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Handle events in the event queue and process provider values.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            provider: The identifier of the provider</span>
-<span class="sd">            value: The value being provided</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            The original or modified value</span>
-
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">child</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-
-            <span class="bp">self</span><span class="o">.</span><span class="n">child</span><span class="o">.</span><span class="n">handle</span><span class="p">(</span><span class="n">provider</span><span class="p">)</span>
-
-            <span class="c1"># If the child was canceled</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">child</span><span class="o">.</span><span class="n">thread</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-
-                <span class="c1"># Tell the parent (current mediator) to continue</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">response_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
-
-                <span class="c1"># Wait until the parent has an event</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
-
-                <span class="c1"># Then wipe the child</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">child</span> <span class="o">=</span> <span class="kc">None</span>
-
-                <span class="c1"># Continue to handle parent event</span>
-
-        <span class="n">process</span> <span class="o">=</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">event_queue</span><span class="o">.</span><span class="n">empty</span><span class="p">()</span>
-
-        <span class="n">event</span> <span class="o">=</span> <span class="kc">None</span>
-        
-        <span class="k">while</span> <span class="n">process</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">batch_size</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_groups</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
             
-            <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interleaver</span><span class="o">.</span><span class="n">batcher</span><span class="o">.</span><span class="n">current_value</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_groups</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="k">if</span> <span class="n">batch_size</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">batch_size</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span> <span class="o">=</span> <span class="n">batch_size</span>
 
-            <span class="n">event</span><span class="p">,</span> <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">event_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
-    
-            <span class="k">if</span> <span class="n">event</span> <span class="o">==</span> <span class="n">Events</span><span class="o">.</span><span class="n">VALUE</span><span class="p">:</span>
-                <span class="n">process</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_value_event</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">provider</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-            <span class="k">elif</span> <span class="n">event</span> <span class="o">==</span> <span class="n">Events</span><span class="o">.</span><span class="n">SWAP</span><span class="p">:</span>
-                <span class="n">process</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_swap_event</span><span class="p">(</span><span class="n">provider</span><span class="p">,</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
-            <span class="k">elif</span> <span class="n">event</span> <span class="o">==</span> <span class="n">Events</span><span class="o">.</span><span class="n">REGISTER</span><span class="p">:</span>
-                <span class="n">process</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_register_event</span><span class="p">(</span><span class="o">*</span><span class="n">data</span><span class="p">)</span>
-            <span class="k">elif</span> <span class="n">event</span> <span class="o">==</span> <span class="n">Events</span><span class="o">.</span><span class="n">EXCEPTION</span><span class="p">:</span>
-                <span class="n">process</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_exception_event</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-            <span class="k">elif</span> <span class="n">event</span> <span class="o">==</span> <span class="n">Events</span><span class="o">.</span><span class="n">SKIP</span><span class="p">:</span>
-                <span class="n">process</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_skip_event</span><span class="p">(</span><span class="n">provider</span><span class="p">,</span> <span class="o">*</span><span class="n">data</span><span class="p">)</span>
-            <span class="k">elif</span> <span class="n">event</span> <span class="o">==</span> <span class="n">Events</span><span class="o">.</span><span class="n">END</span><span class="p">:</span>
-                <span class="n">process</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="k">elif</span> <span class="n">event</span> <span class="o">==</span> <span class="n">Events</span><span class="o">.</span><span class="n">CONTINUE</span><span class="p">:</span>
-                <span class="n">process</span> <span class="o">=</span> <span class="kc">False</span>
-
-        <span class="k">if</span> <span class="n">event</span> <span class="o">==</span> <span class="n">Events</span><span class="o">.</span><span class="n">END</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">handle_end_event</span><span class="p">()</span>
-
-        <span class="c1"># TODO maybe move this to the interleaver to cache the pre-iteration provider</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_cache</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">provider</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-
-            <span class="bp">self</span><span class="o">.</span><span class="n">user_cache</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">provider</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">interleaver</span><span class="o">.</span><span class="n">batcher</span><span class="o">.</span><span class="n">current_value</span><span class="p">)</span></div>
-
-                        
-<div class="viewcode-block" id="Mediator.handle_end_event">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Mediator.handle_end_event">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">handle_end_event</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Handle an end event by stopping the mediator.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span></div>
-
-
-<div class="viewcode-block" id="Mediator.handle_value_event">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Mediator.handle_value_event">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">handle_value_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">requester</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">provider</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Handle a value event by providing the requested value or recording a missed provider.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            requester: The identifier of the requester</span>
-<span class="sd">            provider: The identifier of the provider</span>
-<span class="sd">            value: The value being provided</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Interleaver</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Registers input and output hooks to modules involved in the `InterventionGraph`.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Boolean indicating whether to continue processing events</span>
+<span class="sd">            Interleaver: Interleaver</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="k">if</span> <span class="n">provider</span> <span class="o">==</span> <span class="n">requester</span><span class="p">:</span>
+        <span class="c1"># Keys of `InterventionGraph.interventions` are the module paths + if they are for input or output.</span>
+        <span class="c1"># e.x &#39;transformer.h.0.mlp.output&#39;</span>
+        <span class="k">for</span> <span class="n">module_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">interventions</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
 
-            <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interleaver</span><span class="o">.</span><span class="n">batcher</span><span class="o">.</span><span class="n">narrow</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_group</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="n">module_atoms</span> <span class="o">=</span> <span class="n">module_key</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">respond</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">requester</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="p">:</span>
-                <span class="c1"># TODO needs tests</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">respond</span><span class="p">(</span>
-                    <span class="ne">ValueError</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Value was missed for </span><span class="si">{</span><span class="n">requester</span><span class="si">}</span><span class="s2">. Did you call an Envoy out of order?&quot;</span>
+            <span class="c1"># Get just the hook type i.e input/output</span>
+            <span class="o">*</span><span class="n">module_atoms</span><span class="p">,</span> <span class="n">hook_type</span> <span class="o">=</span> <span class="n">module_atoms</span>
+
+            <span class="c1"># Get just the module path </span>
+            <span class="n">module_path</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">module_atoms</span><span class="p">)</span>
+
+            <span class="c1"># Get the torch module using the module_path</span>
+            <span class="n">module</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">fetch_attr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">module_path</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">hook_type</span> <span class="o">==</span> <span class="s2">&quot;input&quot;</span><span class="p">:</span>
+
+                <span class="c1"># Input hook activations are a tuple of (positional args, key-word arguments)</span>
+                <span class="c1"># Include the module_path not the module</span>
+                <span class="k">def</span><span class="w"> </span><span class="nf">input_hook</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="nb">input</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">,</span> <span class="n">module_path</span><span class="o">=</span><span class="n">module_path</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_hook</span><span class="p">((</span><span class="nb">input</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">),</span> <span class="n">module_path</span><span class="p">,</span> <span class="n">module</span><span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">handles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">module</span><span class="o">.</span><span class="n">register_forward_pre_hook</span><span class="p">(</span>
+                        <span class="n">input_hook</span><span class="p">,</span> <span class="n">with_kwargs</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">prepend</span><span class="o">=</span><span class="kc">True</span>
                     <span class="p">)</span>
                 <span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">provider</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">event_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="n">Events</span><span class="o">.</span><span class="n">VALUE</span><span class="p">,</span> <span class="n">requester</span><span class="p">))</span>
 
-                <span class="k">return</span> <span class="kc">False</span>
+            <span class="k">elif</span> <span class="n">hook_type</span> <span class="o">==</span> <span class="s2">&quot;output&quot;</span><span class="p">:</span>
 
-        <span class="k">return</span> <span class="kc">True</span></div>
+                <span class="k">def</span><span class="w"> </span><span class="nf">output_hook</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="nb">input</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">module_path</span><span class="o">=</span><span class="n">module_path</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_hook</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">module_path</span><span class="p">,</span> <span class="n">module</span><span class="p">)</span>
 
-
-<div class="viewcode-block" id="Mediator.handle_swap_event">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Mediator.handle_swap_event">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">handle_swap_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">provider</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">requester</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>  <span class="n">swap_value</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Handle a swap event by swapping the value if the provider matches the requester.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            requester: The identifier of the requester</span>
-<span class="sd">            provider: The identifier of the provider</span>
-<span class="sd">            swap_value: The value to swap in</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Boolean indicating whether to continue processing events</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">provider</span> <span class="o">==</span> <span class="n">requester</span><span class="p">:</span>
-            
-            <span class="bp">self</span><span class="o">.</span><span class="n">interleaver</span><span class="o">.</span><span class="n">batcher</span><span class="o">.</span><span class="n">swap</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_group</span><span class="p">,</span> <span class="n">swap_value</span><span class="p">)</span>
-     
-            <span class="bp">self</span><span class="o">.</span><span class="n">respond</span><span class="p">()</span>
-
-            <span class="k">return</span> <span class="kc">True</span>
-
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">requester</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="p">:</span>
-                <span class="c1"># TODO needs tests</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">respond</span><span class="p">(</span>
-                    <span class="ne">ValueError</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Setting </span><span class="si">{</span><span class="n">requester</span><span class="si">}</span><span class="s2"> is out of scope for scope </span><span class="si">{</span><span class="n">provider</span><span class="si">}</span><span class="s2">. Did you call an Envoy out of order?&quot;</span>
-                    <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">handles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">module</span><span class="o">.</span><span class="n">register_forward_hook</span><span class="p">(</span><span class="n">output_hook</span><span class="p">,</span> <span class="n">prepend</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
                 <span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">provider</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">event_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="n">Events</span><span class="o">.</span><span class="n">SWAP</span><span class="p">,</span> <span class="p">(</span><span class="n">requester</span><span class="p">,</span> <span class="n">swap_value</span><span class="p">)))</span>
 
-                <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="bp">self</span>
 
-        <span class="k">return</span> <span class="kc">True</span></div>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_val</span><span class="p">,</span> <span class="n">exc_tb</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 
+        <span class="c1"># Remove all hooks</span>
+        <span class="k">for</span> <span class="n">handle</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">handles</span><span class="p">:</span>
+            <span class="n">handle</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
 
-<div class="viewcode-block" id="Mediator.handle_exception_event">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Mediator.handle_exception_event">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">handle_exception_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exception</span><span class="p">:</span> <span class="ne">Exception</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Handle an exception event by raising the exception.</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc_val</span><span class="p">,</span> <span class="ne">Exception</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">exc_val</span></div>
 
-<span class="sd">        Args:</span>
-<span class="sd">            exception: The exception to raise</span>
 
-<span class="sd">        Returns:</span>
-<span class="sd">            Boolean indicating whether to continue processing events</span>
-<span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exception</span><span class="p">,</span> <span class="n">Cancelation</span><span class="p">):</span>
-
-            <span class="n">exception</span> <span class="o">=</span> <span class="n">wrap_exception</span><span class="p">(</span><span class="n">exception</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">)</span>
-
-            <span class="k">raise</span> <span class="n">exception</span>
-
-        <span class="k">return</span> <span class="kc">False</span></div>
-
-    
-    <span class="k">def</span><span class="w"> </span><span class="nf">handle_skip_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">provider</span><span class="p">:</span><span class="n">Any</span><span class="p">,</span> <span class="n">requester</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
-        
-        <span class="k">if</span> <span class="n">provider</span> <span class="o">==</span> <span class="n">requester</span><span class="p">:</span>
-            
-            <span class="bp">self</span><span class="o">.</span><span class="n">respond</span><span class="p">()</span>
-            
-            <span class="k">raise</span> <span class="n">SkipException</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
-        
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">provider</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">event_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="n">Events</span><span class="o">.</span><span class="n">SKIP</span><span class="p">,</span> <span class="p">(</span><span class="n">requester</span><span class="p">,</span> <span class="n">value</span><span class="p">)))</span>
-            
-            <span class="k">return</span> <span class="kc">False</span>
-        
-<div class="viewcode-block" id="Mediator.handle_register_event">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Mediator.handle_register_event">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">handle_register_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mediator</span><span class="p">:</span> <span class="n">Mediator</span><span class="p">,</span> <span class="n">fn</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Handle a register event by registering a new mediator.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            mediator: The mediator to register</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Boolean indicating whether to continue processing events</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">child</span> <span class="o">=</span> <span class="n">mediator</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">child</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">start_line</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">start_line</span> <span class="o">-</span> <span class="mi">1</span>
-
-        <span class="n">mediator</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">interleaver</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">response_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">fn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-
-            <span class="n">fn</span><span class="p">()</span>
-
-            <span class="bp">self</span><span class="o">.</span><span class="n">response_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
-
-            <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
-
-            <span class="bp">self</span><span class="o">.</span><span class="n">handle</span><span class="p">()</span>
-
-        <span class="k">return</span> <span class="kc">False</span></div>
-
-
-<div class="viewcode-block" id="Mediator.respond">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Mediator.respond">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">respond</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Set the value for a pending value request.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            value: The value to provide</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">response_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span></div>
-
-
-    <span class="c1">### Requester Methods ###</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">frame</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Get the frame of the intervention function.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            The frame of the intervention function</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-
-            <span class="n">frame</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">currentframe</span><span class="p">()</span>
-
-            <span class="k">while</span> <span class="n">frame</span><span class="p">:</span>
-                <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_back</span>
-                <span class="k">if</span> <span class="n">frame</span> <span class="ow">and</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_code</span><span class="o">.</span><span class="n">co_filename</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;&lt;nnsight&quot;</span><span class="p">):</span>
-                    <span class="k">break</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_frame</span> <span class="o">=</span> <span class="n">frame</span>
-
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_frame</span>
-    
-    <span class="k">def</span><span class="w"> </span><span class="nf">iterate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">requester</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
-        
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">requester</span><span class="si">}</span><span class="s2">.i</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">iteration</span><span class="si">}</span><span class="s2">&quot;</span>
-
-<div class="viewcode-block" id="Mediator.push">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Mediator.push">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">push</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Push local variables to the interleaver state.&quot;&quot;&quot;</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">interleaver</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span><span class="p">)</span></div>
-
-
-<div class="viewcode-block" id="Mediator.pull">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Mediator.pull">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">pull</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Pull variables from the interleaver state to the frame globals.&quot;&quot;&quot;</span>
-
-        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">interleaver</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
-            <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;__nnsight&quot;</span><span class="p">):</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">interleaver</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">f_globals</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">interleaver</span><span class="o">.</span><span class="n">state</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">interleaver</span><span class="o">.</span><span class="n">state</span><span class="p">)</span>
-
-        <span class="n">ctypes</span><span class="o">.</span><span class="n">pythonapi</span><span class="o">.</span><span class="n">PyFrame_LocalsToFast</span><span class="p">(</span>
-            <span class="n">ctypes</span><span class="o">.</span><span class="n">py_object</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="p">),</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_int</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-        <span class="p">)</span></div>
-
-
-<div class="viewcode-block" id="Mediator.send">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Mediator.send">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">send</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">Events</span><span class="p">,</span> <span class="n">requester</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Send an event to the event queue and wait for a response.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            event: The event to send</span>
-<span class="sd">            requester: The identifier of the requester</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            The response from the provider</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">()</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">event_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="n">event</span><span class="p">,</span> <span class="n">requester</span><span class="p">))</span>
-
-        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">response_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">pull</span><span class="p">()</span>
-
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="ne">Exception</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="n">response</span>
-
-        <span class="k">return</span> <span class="n">response</span></div>
-
-
-<div class="viewcode-block" id="Mediator.request">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Mediator.request">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">requester</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Request a value from a specific provider.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            requester: The identifier of the provider to request a value from</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            The requested value</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-    
-        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">Events</span><span class="o">.</span><span class="n">VALUE</span><span class="p">,</span> <span class="n">requester</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">value</span></div>
-
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">register</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mediator</span><span class="p">:</span> <span class="n">Mediator</span><span class="p">,</span> <span class="n">fn</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">Events</span><span class="o">.</span><span class="n">REGISTER</span><span class="p">,</span> <span class="p">(</span><span class="n">mediator</span><span class="p">,</span> <span class="n">fn</span><span class="p">))</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">response_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
-
-        <span class="k">if</span> <span class="n">fn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">event_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="n">Events</span><span class="o">.</span><span class="n">CONTINUE</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
-
-            <span class="bp">self</span><span class="o">.</span><span class="n">response_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">pull</span><span class="p">()</span>
-
-<div class="viewcode-block" id="Mediator.swap">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Mediator.swap">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">swap</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">requester</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Set a value to swap during execution.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            requester: The identifier of the requester</span>
-<span class="sd">            value: The value to swap in</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">Events</span><span class="o">.</span><span class="n">SWAP</span><span class="p">,</span> <span class="p">(</span><span class="n">requester</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span></div>
-
-
-<div class="viewcode-block" id="Mediator.iter">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Mediator.iter">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">iter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mediator</span><span class="p">:</span> <span class="n">Mediator</span><span class="p">,</span> <span class="n">iteration</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">slice</span><span class="p">]):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Iterate a mediator a specified number of times.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            mediator: The mediator to iterate</span>
-<span class="sd">            iteration: The number of iterations</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">iteration</span><span class="p">,</span> <span class="nb">slice</span><span class="p">):</span>            
-
-            <span class="n">i</span> <span class="o">=</span> <span class="n">iteration</span><span class="o">.</span><span class="n">start</span> <span class="k">if</span> <span class="n">iteration</span><span class="o">.</span><span class="n">start</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">iteration</span>
-            
-            <span class="n">stop</span> <span class="o">=</span> <span class="n">iteration</span><span class="o">.</span><span class="n">stop</span>
-
-            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-                
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">interleaver</span><span class="o">.</span><span class="n">default_all</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">stop</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">stop</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interleaver</span><span class="o">.</span><span class="n">default_all</span>
-
-                <span class="n">mediator</span><span class="o">.</span><span class="n">iteration</span> <span class="o">=</span> <span class="n">i</span>
-
-                <span class="bp">self</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">mediator</span><span class="p">)</span>
-
-                <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
-
-                <span class="k">if</span> <span class="n">stop</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="n">stop</span><span class="p">:</span>
-                    <span class="k">break</span>
-                
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">iteration</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-
-            <span class="n">mediator</span><span class="o">.</span><span class="n">iteration</span> <span class="o">=</span> <span class="n">iteration</span>
-
-            <span class="bp">self</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">mediator</span><span class="p">)</span></div>
-
-            
-<div class="viewcode-block" id="Mediator.stop">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Mediator.stop">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stop the execution of the model by raising an EarlyStopException.&quot;&quot;&quot;</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">()</span>
-
-        <span class="k">raise</span> <span class="n">EarlyStopException</span><span class="p">()</span></div>
-
-    
-    <span class="k">def</span><span class="w"> </span><span class="nf">skip</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">requester</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
-        
-        <span class="bp">self</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">Events</span><span class="o">.</span><span class="n">SKIP</span><span class="p">,</span> <span class="p">(</span><span class="n">requester</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
-
-<div class="viewcode-block" id="Mediator.end">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Mediator.end">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">end</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Signal that execution should continue without further intervention.&quot;&quot;&quot;</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">push</span><span class="p">()</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">event_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="n">Events</span><span class="o">.</span><span class="n">END</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span></div>
-
-
-<div class="viewcode-block" id="Mediator.exception">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Mediator.exception">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">exception</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exception</span><span class="p">:</span> <span class="ne">Exception</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Signal that an exception occurred during intervention.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            exception: The exception that occurred</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">event_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="n">Events</span><span class="o">.</span><span class="n">EXCEPTION</span><span class="p">,</span> <span class="n">exception</span><span class="p">))</span></div>
-
-
-<div class="viewcode-block" id="Mediator.set_user_cache">
-<a class="viewcode-back" href="../../../../documentation/intervention/#nnsight.intervention.interleaver.Mediator.set_user_cache">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">set_user_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache</span><span class="p">:</span> <span class="s2">&quot;Cache&quot;</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Set the user cache for this mediator.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            cache: The cache to set</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">user_cache</span> <span class="o">=</span> <span class="n">cache</span></div>
-
-
-    <span class="c1">### Serialization ###</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the state of the mediator for serialization.&quot;&quot;&quot;</span>
-        
-        <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
-            <span class="s2">&quot;info&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">,</span>
-            <span class="s2">&quot;batch_group&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_group</span><span class="p">,</span>
-            <span class="s2">&quot;intervention&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">intervention</span><span class="p">,</span>
-        <span class="p">}</span>
-        
-    <span class="k">def</span><span class="w"> </span><span class="nf">__setstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set the state of the mediator for deserialization.&quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">info</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;info&quot;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">batch_group</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;batch_group&quot;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">intervention</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;intervention&quot;</span><span class="p">]</span>
-        
-        <span class="bp">self</span><span class="o">.</span><span class="n">event_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">response_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">()</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">thread</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">interleaver</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">child</span><span class="p">:</span> <span class="n">Mediator</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">user_cache</span><span class="p">:</span> <span class="s2">&quot;Cache&quot;</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">iteration</span> <span class="o">=</span> <span class="mi">0</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_frame</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 </pre></div>
 

@@ -1,9 +1,10 @@
 /* Website light and dark theme colors */
 
 html[data-theme="dark"] {
-    --pst-color-secondary: #ce5d97;
+    --pst-color-secondary: #a134eb;
     --pst-color-primary: #4385be;
-    --pst-color-primary-highlight: #ce5d97;
+    --pst-color-link-hover: #fcfaf2;
+    --pst-color-primary-highlight: #CECDC3;
     --pst-color-background: #100F0F;
     --pst-color-on-background: #1C1B1A;
     --pst-color-surface: #282726;
@@ -20,7 +21,7 @@ html[data-theme="light"] {
     --output-bg-color: #d8ebfb;
     --pst-color-primary: #4385be;
     --pst-color-secondary: #ce5d97;
-    --pst-color-primary-highlight: #ce5d97;
+    --pst-color-primary-highlight: #1C1B1A;
 }
 
 
