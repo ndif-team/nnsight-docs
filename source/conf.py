@@ -4,7 +4,7 @@ import time
 
 # Project Information
 project = "nnsight"
-copyright = "2024 NDIF"
+copyright = "2025 NDIF"
 author = "Jaden Fiotto-Kaufman"
 
 
@@ -17,6 +17,7 @@ extensions = [
     "nbsphinx",  # Jupyter notebook support
     "sphinx.ext.viewcode",  # Add source links to the generated HTML files
     "sphinx.ext.extlinks",  # Add external links
+    'sphinx_toolbox.collapse' # add collapsible items
 ]
 
 templates_path = ["_templates"]
@@ -70,6 +71,12 @@ html_theme_options = {
     ],
     "show_prev_next": False,
     "pygment_dark_style": "monokai",
+    "sidebar": {
+        "navigation_with_keys": True,
+    },
+    "navigation_depth": 2,
+    "show_toc_level": 2,
+    "collapse_navigation": False,
 }
 
 extlinks = {'ndif': ('https://%s.com/ndif-team/nnsight',
