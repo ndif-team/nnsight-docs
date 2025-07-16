@@ -1,15 +1,18 @@
-.. nnsight documentation master file, created by
-   sphinx-quickstart on Fri May 16 15:23:59 2025.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+:html_theme.sidebar_secondary.remove:
+:sd_hide_title:
 
-nnsight documentation
-=====================
-
-PPoosd your content using ``reStructuredText`` syntax. This is some stuff
-
+nnsight
+=======
 
 .. toctree::
+  :maxdepth: 1
+  :hidden:
 
-   hello.md
+  start
+  documentation
+  features
+  tutorials
+  About <about>
 
+.. raw:: html
+   :file: pages/home.html
