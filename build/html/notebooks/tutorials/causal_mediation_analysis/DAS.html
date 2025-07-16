@@ -61,8 +61,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="" />
-<link href="../../../_static/css/custom.css?v=1752601597" rel="stylesheet" type="text/css" />
-<link href="../../../_static/css/home.css?v=1752601597" rel="stylesheet" type="text/css" />
+<link href="../../../_static/css/custom.css?v=1752666882" rel="stylesheet" type="text/css" />
+<link href="../../../_static/css/home.css?v=1752666882" rel="stylesheet" type="text/css" />
 
   </head>
   
@@ -621,10 +621,11 @@
 </li><li><p>RAVEL - evaluation framework for localizing concepts in model activations.</p>
 </li></ul><p>Let’s do this!</p>
 </div><div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">IPython.display</span><span class="w"> </span><span class="kn">import</span> <span class="n">clear_output</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">plotly.io</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pio</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">IPython.display</span><span class="w"> </span><span class="kn">import</span> <span class="n">clear_output</span>
 
 <span class="k">try</span><span class="p">:</span>
   <span class="kn">import</span><span class="w"> </span><span class="nn">google.colab</span>
@@ -633,7 +634,10 @@
   <span class="n">is_colab</span> <span class="o">=</span> <span class="kc">False</span>
 
 <span class="k">if</span> <span class="n">is_colab</span><span class="p">:</span>
+  <span class="n">pio</span><span class="o">.</span><span class="n">renderers</span><span class="o">.</span><span class="n">default</span> <span class="o">=</span> <span class="s2">&quot;colab&quot;</span>
   <span class="o">!</span>pip<span class="w"> </span>install<span class="w"> </span><span class="nv">nnsight</span><span class="o">==</span><span class="m">0</span>.5.0.dev
+<span class="k">else</span><span class="p">:</span>
+  <span class="n">pio</span><span class="o">.</span><span class="n">renderers</span><span class="o">.</span><span class="n">default</span> <span class="o">=</span> <span class="s2">&quot;plotly_mimetype+notebook_connected+notebook&quot;</span>
 
 <span class="n">clear_output</span><span class="p">()</span>
 </pre></div>
@@ -658,7 +662,7 @@
 <script type="application/vnd.jupyter.widget-view+json">{"model_id": "279676108a6b45ddadf4a6f339db525d", "version_major": 2, "version_minor": 0}</script></div>
 </div>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># (try to) set seeds for reproducibility</span>
@@ -677,7 +681,7 @@
 <p>One way to start investigating this is activation patching. When we patch the residual stream of the 8th layer’s activation for the Paris token, we change its country from France to Brazil.</p>
 <p><img alt="two forward runs of a model, with an arrow between the residual stream activations of Rio and Paris. After the intervention is applied, the model outputs Brazil" src="https://github.com/AmirZur/nnsight-tutorials/blob/main/figures/patching_visualization.png?raw=true" /></p>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># load model</span>
@@ -689,7 +693,7 @@
 </div>
 </div>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># base run - does our model know where Paris is?</span>
@@ -711,6 +715,14 @@
 </pre></div>
 </div>
 </div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+Some parameters are on the meta device because they were offloaded to the cpu.
+</pre></div></div>
+</div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
@@ -722,7 +734,7 @@
 </pre></div></div>
 </div>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># source run - collect representations for a city from a different country</span>
@@ -740,7 +752,7 @@
 </div>
 </div>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># patched run - by patching at layer 8 over Paris, we change its country from France to Brazil!</span>
@@ -773,7 +785,7 @@
 </div>
 <p>However, we <strong>also accidentally edit other facts about Paris</strong>, such as its continent and language!</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># by changing Paris&#39;s country, we also changed its continent!</span>
@@ -808,7 +820,7 @@
 </pre></div></div>
 </div>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># as well as its language!</span>
@@ -839,32 +851,6 @@
  English (0.10)
 </pre></div></div>
 </div>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">IPython.display</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTML</span>
-
-<span class="n">HTML</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
-<span class="s1">&lt;div style=&quot;background-color:#C1E5F5;padding:10px 10px;border-radius:20px&quot;&gt;</span>
-<span class="s1">&lt;b&gt;Takeaway&lt;/b&gt;</span>
-
-<span class="s1">We need to find a way to make our patching **more precise**. One way to do this is to patch a unit of computation that&#39;s smaller than the whole residual stream component. There are many reasonable options, such as patching sets of neurons. In this tutorial, we&#39;ll look at how we can patch **linear subspaces** of a model&#39;s representation.</span>
-<span class="s1">&lt;/div&gt;</span>
-<span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
-<br/></pre></div>
-</div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area rendered_html docutils container">
-<div style="background-color:#C1E5F5;padding:10px 10px;border-radius:20px">
-<b>Takeaway</b>
-
-We need to find a way to make our patching **more precise**. One way to do this is to patch a unit of computation that's smaller than the whole residual stream component. There are many reasonable options, such as patching sets of neurons. In this tutorial, we'll look at how we can patch **linear subspaces** of a model's representation.
-</div></div>
-</div>
 <div style="background-color:#C1E5F5;padding:10px 10px;border-radius:20px"><p>Takeaway</p>
 <p>We need to find a way to make our patching <strong>more precise</strong>. One way to do this is to patch a unit of computation that’s smaller than the whole residual stream component. There are many reasonable options, such as patching sets of neurons. In this tutorial, we’ll look at how we can patch <strong>linear subspaces</strong> of a model’s representation.</p>
 <div style="background-color:#F2CFEE;padding:10px 10px;border-radius:20px"><p>Want to know more?</p>
@@ -874,7 +860,7 @@ We need to find a way to make our patching **more precise**. One way to do this 
 <h2>Choosing the right unit of computation - how do models represent concepts?<a class="headerlink" href="#Choosing-the-right-unit-of-computation---how-do-models-represent-concepts?" title="Link to this heading">#</a></h2>
 <p>What are we patching to begin with? Let’s take a look at the source activations we collected.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">source_activations</span> <span class="o">=</span> <span class="n">source_hidden_states</span><span class="p">[</span><span class="n">LAYER_INDEX</span><span class="p">][:,</span> <span class="n">TOKEN_INDEX</span><span class="p">,</span> <span class="p">:]</span>
@@ -883,7 +869,8 @@ We need to find a way to make our patching **more precise**. One way to do this 
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
@@ -892,7 +879,7 @@ tensor([[ 0.0111, -0.0206, -0.2613,  ..., -0.0281, -0.1300,  0.0346]],
 </pre></div></div>
 </div>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">source_activations</span><span class="o">.</span><span class="n">shape</span>
@@ -900,7 +887,8 @@ tensor([[ 0.0111, -0.0206, -0.2613,  ..., -0.0281, -0.1300,  0.0346]],
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
@@ -914,7 +902,7 @@ torch.Size([1, 2048])
 <p>To patch a set of neurons, we could simply index into the ones we think encode important concepts in the model. However, enumerating all subsets of neurons is computationally infeasible.</p>
 <p><img alt="patching the first 3 neurons of the activations of Rio and Paris" src="https://github.com/AmirZur/nnsight-tutorials/blob/main/figures/patching_neurons_visualization.png?raw=true" /></p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># change the list of indices to try a set of neurons to patch!</span>
@@ -951,7 +939,7 @@ torch.Size([1, 2048])
 <p>First, we <strong>rotate</strong> our base and source vectors. This creates two new vectors, whose neurons are linear combinations of the original vector. Next, we <strong>patch linear subspaces</strong> just as we would in the regular set-up. Lastly, we <strong>rotate back</strong> the patched vector, so that it’s in the same basis as the original run.</p>
 <p><img alt="patch between a source and base vector, where the source &amp; base vector are first rotated. the resulting patch is then un-rotated back to the original basis" src="https://github.com/AmirZur/nnsight-tutorials/blob/main/figures/das_visualization.png?raw=true" /></p>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># construct a rotation matrix (model_dim x model_dim)</span>
@@ -966,7 +954,7 @@ torch.Size([1, 2048])
 </div>
 </div>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># play around with how many linear dimensions we patch!</span>
@@ -1070,7 +1058,7 @@ torch.Size([1, 2048])
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-100%|██████████| 10/10 [00:13&lt;00:00,  1.37s/it, loss=3.04]
+ 10%|█         | 1/10 [02:41&lt;22:09, 147.70s/it, loss=0.273]
 </pre></div></div>
 </div>
 <p>Looks like training our rotation matrix did the job! Now, patching from Rio to Paris changes Paris’s country from France to Brazil.</p>
@@ -1275,7 +1263,7 @@ torch.Size([1, 2048])
         <div class="footer-item">
 <p class="theme-version">
   <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
-   
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
 </p></div>
       
     </div>
